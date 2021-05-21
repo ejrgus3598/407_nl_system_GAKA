@@ -5,3 +5,5 @@ acs_cct = np.zeros(10)
 acs_iluum = np.zeros(10)
 
 def set_sensor_data(num, illum, cct):
+    acs_cct[num-1] = cct
+    acs_iluum[num-1] = illum

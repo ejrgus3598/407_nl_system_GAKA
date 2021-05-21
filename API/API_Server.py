@@ -1,5 +1,5 @@
 from flask import Flask, request
-from Core import arduino_color_sensor as acs
+# from Core import arduino_color_sensor as acs
 
 #Flask 인스턴스 생성
 app = Flask(__name__)

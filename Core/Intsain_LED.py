@@ -13,6 +13,8 @@ def set_LED(num, ch1, ch2, ch3, ch4):
     LED_state[num-1] = [num, ch1, ch2, ch3, ch4]
     print(LED_state[num-1])
     sock.sendto(msg.encode(), ("192.168.100.210", 50210))
+    time.sleep(0.1)
+    sock.sendto(msg.encode(), ("192.168.100.210", 50210))
     sock.close()
 
 def all_set_LED(ch1, ch2, ch3, ch4):
@@ -30,4 +32,4 @@ def all_set_LED(ch1, ch2, ch3, ch4):
 
 if __name__ == '__main__':
     all_set_LED(0,0,0,0)
-    # set_LED(30, 0, 0, 0, 255)
+    # set_LED(6, 0, 0, 0, 0)

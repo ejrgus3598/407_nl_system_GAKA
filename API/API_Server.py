@@ -46,7 +46,7 @@ def insert_sensor_data():
     # 위에 10개 조도센서 아래 10개 전력량계 분해하기.(패킷 받아봐야 함)
 
 
-    insert_db("cct",num, illum, cct)
+    # insert_db("cct",num, illum, cct)
     # acs.set_sensor_data(num, illum, cct)
     return "ok"
 
@@ -63,8 +63,8 @@ def insert_db(type, num, illum, cct):
 
 #서버 실행
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host="192.168.100.100",debug=True)
 
 def start_api_server():
-    app.run(debug=True)
+    app.run(host="192.168.100.100",debug=True)
 

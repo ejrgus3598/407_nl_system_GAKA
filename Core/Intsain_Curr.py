@@ -7,4 +7,7 @@ intsain_curr = np.zeros(10)
 def set_curr_data(i, curr):
     global intsain_curr
     intsain_curr[i] = curr
-    print(intsain_curr[i])
+    # print(intsain_curr[i])
+
+def get_curr_data():
+    return intsain_curr

@@ -5,7 +5,10 @@ import numpy as np
 global intsain_illum
 intsain_illum = np.zeros(10)
 
-def set_curr_data(i, illum):
+def set_illum_data(i, illum):
     global intsain_illum
     intsain_illum[i] = illum
-    print(intsain_illum[i])
+    # print(intsain_illum[i])
+
+def get_illum_data():
+    return intsain_illum

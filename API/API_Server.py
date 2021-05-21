@@ -39,28 +39,22 @@ def insert_cct(num):
 
     # insert_db("cct",num, illum, cct)
     acs.set_sensor_data(num, illum, cct)
+    print(num, illum, cct)
     return "ok"
 
 
-@app.route('/insert/intsain', methods = ['POST'])
-def insert_sensor_data():
-    data = request.get_json()
-    # 위에 10개 조도센서 아래 10개 전력량계 분해하기.(패킷 받아봐야 함)
-
-
-    # insert_db("cct",num, illum, cct)
-    # acs.set_sensor_data(num, illum, cct)
-    return "ok"
+# @app.route('/insert/intsain', methods = ['POST'])
+# def insert_sensor_data():
+#     data = request.get_json()
+#     # 위에 10개 조도센서 아래 10개 전력량계 분해하기.(패킷 받아봐야 함)
+#
+#
+#     # insert_db("cct",num, illum, cct)
+#     # acs.set_sensor_data(num, illum, cct)
+#     return "ok"
 
 def insert_db(type, num, illum, cct):
     return 0
-
-
-
-
-
-
-
 
 
 #서버 실행

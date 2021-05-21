@@ -13,3 +13,6 @@ def set_sensor_data(num, illum, cct):
 
     acs_cct[num-1] = cct
     acs_iluum[num-1] = illum
+
+def get_sensor_data():
+    return [[acs_cct, acs_iluum]]

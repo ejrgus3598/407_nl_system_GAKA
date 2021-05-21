@@ -4,7 +4,7 @@ import numpy as np
 global intsain_curr
 intsain_curr = np.zeros(10)
 
-def set_curr_data(currs):
-    # global intsain_curr
-
-    intsain_curr = currs
+def set_curr_data(i, curr):
+    global intsain_curr
+    intsain_curr[i] = curr
+    print(intsain_curr[i])

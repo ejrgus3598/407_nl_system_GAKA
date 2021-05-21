@@ -1,5 +1,7 @@
 from flask import Flask, request
-# from Core import arduino_color_sensor as acs
+from Core import arduino_color_sensor as acs
+from Core import Intsain_Curr as IC
+from Core import Intsain_Illum as II
 
 #Flask 인스턴스 생성
 app = Flask(__name__)
@@ -35,8 +37,8 @@ def insert_cct(num):
     else :
         return "num_error"
 
-    insert_db("cct",num, illum, cct)
-    # acs.set_sensor_data(num, illum, cct)
+    # insert_db("cct",num, illum, cct)
+    acs.set_sensor_data(num, illum, cct)
     return "ok"
 
 
@@ -68,3 +70,5 @@ if __name__ == '__main__':
 def start_api_server():
     app.run(host="192.168.100.100",debug=True)
 
+
+#  mongoDB 구축, 아두이노 포팅, udp 통신제어

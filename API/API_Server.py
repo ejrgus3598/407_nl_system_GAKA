@@ -14,7 +14,7 @@ def insert_cct():
     num = int(request.form.get('num'))
     cct = float(request.form.get('cct'))
     illum = float(request.form.get("illum"))
-    print(type(num))
+    # print(type(num))
     if(num == 1) :
         cct = (1.1062*cct)-618.65
     elif (num == 2) :

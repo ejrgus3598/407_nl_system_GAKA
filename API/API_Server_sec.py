@@ -1,4 +1,8 @@
 from multiprocessing import Process
+from typing import Optional
+
+from fastapi import FastAPI, Form
+import uvicorn
 
 from celery import Celery
 from flask import Flask, request
@@ -7,16 +11,17 @@ from Core import Intsain_Curr as IC
 from Core import Intsain_Illum as II
 from gevent.pywsgi import WSGIServer
 #Flask 인스턴스 생성
-app = Flask(__name__)
-@app.route('/')
-def hello_world():
-    return 'hi'
+app = FastAPI()
 
-@app.route('/insert/CCT', methods = ['POST'])
-async def insert_cct():
-    num = int(request.form.get('num'))
-    cct = float(request.form.get('cct'))
-    illum = float(request.form.get("illum"))
+# @app.route('/')
+# def hello_world():
+#     return 'hi'
+
+@app.post('/insert/CCT')
+async def insert_cct(num: int = Form(...),cct: float = Form(...),illum: float = Form(...)):
+    # num = int(request.form.get('num'))
+    # cct = float(request.form.get('cct'))
+    # illum = float(request.form.get("illum"))
     print(num,"번 들어옴")
     # if(num == 1) :
     #     cct = (1.1062*cct)-618.65
@@ -40,10 +45,10 @@ async def insert_cct():
     #     cct = (1.0639*cct)-542.35
     # else :
     #     return "num_error"
-
-    # insert_db("cct",num, illum, cct)
+    #
+    # # insert_db("cct",num, illum, cct)
     # acs.set_sensor_data(num, illum, cct)
-    # print(num, illum, cct)
+    # # print(num, illum, cct)
     # return "ok"
 
 
@@ -56,32 +61,36 @@ async def insert_cct():
 #     # insert_db("cct",num, illum, cct)
 #     # acs.set_sensor_data(num, illum, cct)
 #     return "ok"
-
-def insert_db(type, num, illum, cct):
-    return 0
-
-def init_celery():
-    celery = Celery()
-    celery.conf.broker_url = app.config['redis://localhost:6379/0']
-    celery.conf.result_backend = app.config['redis://localhost:6379/0']
-    celery.conf.update(app.config)
-    class ContextTask(celery.Task):
-        """Make celery tasks work with Flask app context"""
-        def __call__(self, *args, **kwargs):
-            with app.app_context():
-                return self.run(*args, **kwargs)
-    celery.Task = ContextTask
-    return celery
-
-
-async def start_api_server():
-    # app.run(host="192.168.100.100",debug=True)
-    http_server = WSGIServer(("192.168.100.100", 80), app)
-    http_server.serve_forever()
+#
+# def insert_db(type, num, illum, cct):
+#     return 0
+#
+# def init_celery():
+#     celery = Celery()
+#     celery.conf.broker_url = app.config['redis://localhost:6379/0']
+#     celery.conf.result_backend = app.config['redis://localhost:6379/0']
+#     celery.conf.update(app.config)
+#     class ContextTask(celery.Task):
+#         """Make celery tasks work with Flask app context"""
+#         def __call__(self, *args, **kwargs):
+#             with app.app_context():
+#                 return self.run(*args, **kwargs)
+#     celery.Task = ContextTask
+#     return celery
+#
+#
+# async def start_api_server():
+#     # app.run(host="192.168.100.100",debug=True)
+#     http_server = WSGIServer(("192.168.100.100", 80), await app)
+#     http_server.serve_forever()
 
 
 # 서버 실행
+
+
 if __name__ == '__main__':
+
+    uvicorn.run(app, host="192.168.100.100" ,port=80)
     # app.run(host="192.168.100.100",port=80,debug=True, threaded=True)
     # http_server = WSGIServer(("192.168.100.100", 80),  app)
     # http_server.serve_forever()
@@ -90,7 +99,7 @@ if __name__ == '__main__':
     # api.daemon = True
     # api.start()
 
-    start_api_server()
+    # start_api_server()
 
 
 #  mongoDB 구축, 아두이노 포팅, udp 통신제어

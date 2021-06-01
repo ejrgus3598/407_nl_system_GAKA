@@ -13,10 +13,10 @@ def process():
         try:
             message = connectionSocket.recv(1024)
             str = message.decode().split("\n")[5].split("&")
-
+            print(str)
             num = int(str[0].split("=")[1])
-            cct = float(str[1].split("=")[1])
-            illum = float(str[2].split("=")[1])
+            illum = float(str[1].split("=")[1])
+            cct = float(str[2].split("=")[1])
             print(num, "번 들어옴")
             if (num == 1):
                 cct = (1.1062 * cct) - 618.65

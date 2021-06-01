@@ -11,4 +11,5 @@ def set_illum_data(i, illum):
     # print(intsain_illum[i])
 
 def get_illum_data():
+    global intsain_illum
     return intsain_illum

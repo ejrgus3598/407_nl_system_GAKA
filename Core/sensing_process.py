@@ -25,7 +25,7 @@ def get_intsain():
         # print(total_data)
         temp = total_data.split("data:[")
         temp = temp[1].split("]")
-        # print(temp[0])
+        print(temp[0])
         temp = temp[0].split("},")
 
         for i in range(10):

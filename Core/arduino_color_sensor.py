@@ -13,8 +13,8 @@ def set_sensor_data(num, illum, cct):
 
     acs_cct[num-1] = cct
     acs_iluum[num-1] = illum
-    # for i in range(1,10):
-    #     print(i,acs_cct[i-1],acs_iluum[i-1])
+    for i in range(1,10):
+        print(i,acs_cct[i-1],acs_iluum[i-1])
 
 def get_sensor_data():
     return [[acs_cct, acs_iluum]]

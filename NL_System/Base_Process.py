@@ -10,15 +10,14 @@ from multiprocessing import Process, Queue
 
 
 def process():
-    api = Process(target=TCP_Server.process)
+
+    api = threading.Thread(target=TCP_Server.process)
     api.start()
 
     # switch.onnoff()
 
     auto_get = Process(target=sp.get_intsain)
-
     auto_get.start()
-    api.start()
 
 if __name__ == '__main__':
     process()

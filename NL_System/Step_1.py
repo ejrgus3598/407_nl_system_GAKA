@@ -1,17 +1,13 @@
 # 암막, 자연광 색온도, 실시간, cas, 필요조도, 색온도 재현
 import pandas as pd
-from multiprocessing import Process, Queue
 from MongoDB import Load_MongoDB as LMDB
 from NL_System import Base_Process as bp
 from Core import Intsain_LED as ILED
 import numpy as np
-from Core import Intsain_Curr as IC
-from Core import Intsain_Illum as II
-from Core import arduino_color_sensor as acs
-
-
-
-
+import threading, time
+from Core.arduino_color_sensor import acs
+from Core.Intsain_Illum import II
+from Core.Intsain_Curr import IC
 
 def find_nearest(array, value):
     array = np.asarray(array)
@@ -25,25 +21,24 @@ def load_NL_CCT_mongo():
     return step_df
 
 def process():
-    # base = Process(target=bp.process)
-    # base.start()
+    # 센싱부 실행
+    base = threading.Thread(target=bp.process)
+    base.start()
 
+    # 기준 조도, 색온도 설정
     target_illum = 200
-    # print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-    print(II.get_illum_data())
-
     mongo_df = load_NL_CCT_mongo()
     cct_now = float(mongo_df['CCT'].values[0])
+    cct_now = 2700
     print(cct_now)
 
+    # 제어지표 필터링.
     control_pd = pd.read_csv("../LEDcontrol_list.csv")
-    # print(control_pd)
     control_pd["illum"] = control_pd["illum"].astype(float)
     control_pd["cct"] = control_pd["cct"].astype(float)
 
     mask = (control_pd.illum >= target_illum-50) & (control_pd.illum <= target_illum+50) & (control_pd.cct >= cct_now-100) & (control_pd.cct <= cct_now+100)
     print(control_pd[mask][['idx','ch.1','ch.2','ch.3','ch.4','illum','cct']])
-
     temp = control_pd[mask]['cct'].values
     temp_df = control_pd[mask]
     temp_df = temp_df.reset_index(drop=True)
@@ -55,8 +50,8 @@ def process():
     ch4 = int(final_df['ch.4'].values[0])
 
     ILED.all_set_LED(ch1,ch2,ch3,ch4)
-    print(II.get_illum_data())
 
+    time.sleep(10)
 
 
 if __name__ == '__main__':

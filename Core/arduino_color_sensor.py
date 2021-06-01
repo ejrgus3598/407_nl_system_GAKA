@@ -1,20 +1,38 @@
 # 색온도 센서 데이터 받고 API로도 보내고
 import numpy as np
 # rest 프로토콜 사용
-global acs_cct
-global acs_iluum
 
-acs_cct = np.zeros(10)
-acs_iluum = np.zeros(10)
+class acs:
+    _instance = None
+    def __init__(self):
+        if not acs._instance:
+            self.acs_cct = np.zeros(10)
+            self.acs_illum = np.zeros(10)
+            print('__init__ method called but nothing is created')
+            # print([self.acs_cct, self.acs_illum])
+        else:
+            print('instance already created:', self.getInstance())
+            # print([self.acs_cct, self.acs_illum])
 
-def set_sensor_data(num, illum, cct):
-    global acs_cct
-    global acs_iluum
+    @classmethod
+    def getInstance(cls):
+        if not cls._instance:
+            cls._instance = acs()
+        return cls._instance
 
-    acs_cct[num-1] = cct
-    acs_iluum[num-1] = illum
-    for i in range(1,10):
-        print(i,acs_cct[i-1],acs_iluum[i-1])
 
-def get_sensor_data():
-    return [[acs_cct, acs_iluum]]
+    def set_sensor_data(self, num, illum, cct):
+        # global acs_cct
+        # global acs_iluum
+
+        self.acs_cct[num - 1] = cct
+        self.acs_illum[num - 1] = illum
+        # for i in range(1, 10):
+        #     print(i, self.acs_cct[i - 1], self.acs_illum[i - 1])
+
+    def get_sensor_data(self):
+        # global acs_cct
+        # global acs_iluum
+        # for i in range(1, 10):
+        #     print(i, self.acs_cct[i - 1], self.acs_illum[i - 1])
+        return [[self.acs_cct, self.acs_illum]]

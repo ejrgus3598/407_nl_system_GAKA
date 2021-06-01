@@ -21,6 +21,12 @@ def load_NL_CCT_mongo():
     return step_df
 
 def process():
+    # 싱글톤 데이터 센터 로드.
+    acs1 = acs.getInstance()
+    II1 = II.getInstance()
+    IC1 = IC.getInstance()
+
+
     # 센싱부 실행
     base = threading.Thread(target=bp.process)
     base.start()
@@ -37,6 +43,8 @@ def process():
     control_pd["illum"] = control_pd["illum"].astype(float)
     control_pd["cct"] = control_pd["cct"].astype(float)
 
+
+    # 반복 포인트 if 를 더해서.
     mask = (control_pd.illum >= target_illum-50) & (control_pd.illum <= target_illum+50) & (control_pd.cct >= cct_now-100) & (control_pd.cct <= cct_now+100)
     print(control_pd[mask][['idx','ch.1','ch.2','ch.3','ch.4','illum','cct']])
     temp = control_pd[mask]['cct'].values
@@ -51,6 +59,17 @@ def process():
 
     ILED.all_set_LED(ch1,ch2,ch3,ch4)
 
+    acs_cct = acs1.get_sensor_data()[0][:9]
+    II_illum = II1.get_illum_data()[:9]
+    IC_curr = IC1.get_curr_data()[:9]
+
+    data_pd = pd.DataFrame(acs_cct, columns=['cct'])
+    for i in range(9):
+        data_pd.loc[i,'illum'] = II_illum[i]
+        data_pd.loc[i,'curr'] = IC_curr[i]
+    #
+    print(data_pd)
+    # 1분주기로 반복.(카스 재측정시간)
     time.sleep(10)
 
 

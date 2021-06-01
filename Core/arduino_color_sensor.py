@@ -35,4 +35,4 @@ class acs:
         # global acs_iluum
         # for i in range(1, 10):
         #     print(i, self.acs_cct[i - 1], self.acs_illum[i - 1])
-        return [[self.acs_cct, self.acs_illum]]
+        return [self.acs_cct, self.acs_illum]

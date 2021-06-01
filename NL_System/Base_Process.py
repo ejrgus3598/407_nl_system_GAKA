@@ -16,7 +16,7 @@ def process():
 
     # switch.onnoff()
 
-    auto_get = Process(target=sp.get_intsain)
+    auto_get = threading.Thread(target=sp.get_intsain)
     auto_get.start()
 
 if __name__ == '__main__':

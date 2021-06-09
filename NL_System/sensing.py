@@ -32,18 +32,19 @@ def process():
     base.start()
 
     while True:
-        acs_cct = acs1.get_sensor_data()[0][:9]
-        II_illum = II1.get_illum_data()[:9]
-        IC_curr = IC1.get_curr_data()[:9]
+        acs_cct = acs1.get_sensor_data()[0][:10]
+        II_illum = II1.get_illum_data()[:10]
+        IC_curr = IC1.get_curr_data()[:10]
 
         data_pd = pd.DataFrame(acs_cct, columns=['cct'])
-        for i in range(9):
+        for i in range(10):
             data_pd.loc[i, 'illum'] = II_illum[i]
             data_pd.loc[i, 'curr'] = IC_curr[i]
         #
+        print("\n\n\t\t측정데이터")
         print(data_pd)
         # 1분주기로 반복.(카스 재측정시간)
-        time.sleep(10)
+        time.sleep(1)
 
 
 

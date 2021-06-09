@@ -33,5 +33,5 @@ def all_set_LED(ch1, ch2, ch3, ch4):
 
 
 if __name__ == '__main__':
-    all_set_LED(0,0,0,30)
+    all_set_LED(0,0,0,0)
     # set_LED(6, 0, 0, 0, 0)

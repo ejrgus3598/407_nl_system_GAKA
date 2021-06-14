@@ -1,5 +1,6 @@
 import pandas as pd
 from pymongo import MongoClient
+from Core import Intsain_LED_rev as ILED
 
 def load_last1_cct():
     # Requires the PyMongo package.
@@ -125,8 +126,20 @@ def process(main_key):
     step_df = step_df.reset_index(drop=True)
     return step_df
 
-def get_LED_state(main_key,i):
+def get_LED_state(main_key,idx):
     step_data = load_last1_cct()
-    step_df = mongodb_to_df_LED(step_data, main_key,i)
-    step_df = step_df.reset_index(drop=True)
-    return step_df
+
+    for i in range(30):
+        temp = mongodb_to_df_LED(step_data, main_key, i)
+        # 이거 자체에 딜레이가 많이 먹음.
+
+        temp = temp.reset_index(drop=True)
+
+        ch1 = int(float(temp.loc[idx, 'ch1'].replace(" ", "")))
+        ch2 = int(float(temp.loc[idx, 'ch2'].replace(" ", "")))
+        ch3 = int(float(temp.loc[idx, 'ch3'].replace(" ", "")))
+        ch4 = int(float(temp.loc[idx, 'ch4'].replace(" ", "")))
+        print(i + 1, ch1, ch2, ch3, ch4)
+        ILED.set_LED(i + 1, ch1, ch2, ch3, ch4)
+
+    return 0

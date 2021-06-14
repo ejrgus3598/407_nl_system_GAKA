@@ -70,15 +70,73 @@ def process():
         if abs(cct_now-log_cct)<50:
             print("로그 찾음!",cct_now, log_cct)
             idx = find_nearest_index(temp, cct_now)
-            for i in range(30):
-                temp = lll.get_LED_state('LED_State',i)
-                # temp.loc[idx,['ch1','ch2','ch3','ch4']]
-                ch1 = int(temp.loc[idx,'ch1'])
-                ch2 = int(temp.loc[idx,'ch2'])
-                ch3 = int(temp.loc[idx,'ch3'])
-                ch4 = int(temp.loc[idx,'ch4'])
-                # print(i+1,ch1, ch2, ch3, ch4)
-                ILED.set_LED(i + 1, ch1, ch2, ch3, ch4)
+            lll.get_LED_state('LED_State', idx)
+
+            #  데이터 수집에 문제가 있는지 체크
+
+            for i in range(1, 10):
+                acs1.set_sensor_data(i, 0, 0)
+                II1.set_illum_data(i - 1, 0)
+                IC1.set_curr_data(i - 1, 0)
+            data_flag = True
+            data_count = 0
+            while data_flag:
+                print(data_count)
+                data_flag = False
+
+                acs_cct = acs1.get_sensor_data()[0][:9]
+                II_illum = II1.get_illum_data()[:9]
+                IC_curr = IC1.get_curr_data()[:9]
+
+                for i in acs_cct:
+                    if i == 0:
+                        data_flag = True
+                        continue
+
+                for i in II_illum:
+                    if i == 0:
+                        data_flag = True
+                        continue
+
+                for i in IC_curr:
+                    if i == 0:
+                        data_flag = True
+                        continue
+
+                if data_count > 100:
+                    # print(data_count, "?")
+                    switch.onnoff()
+                    data_count = 0
+                else:
+                    time.sleep(0.5)
+                    data_count = data_count + 1
+
+            # 문제없으면 받아와서 알고리즘 실행
+            acs_cct = acs1.get_sensor_data()[0][:9]
+            II_illum = II1.get_illum_data()[:9]
+            IC_curr = IC1.get_curr_data()[:9]
+
+            data_pd = pd.DataFrame(acs_cct, columns=['cct'])
+            for i in range(9):
+                data_pd.loc[i, 'illum'] = II_illum[i]
+                data_pd.loc[i, 'curr'] = IC_curr[i]
+            #
+            print(data_pd)
+
+            uniformity = 0
+            sum_illum = II_illum[0] + II_illum[1] * 2 + II_illum[2] + II_illum[3] * 2 + II_illum[4] * 4 + II_illum[
+                5] * 2 + \
+                        II_illum[6] + II_illum[7] * 2 + II_illum[8]
+            avg_illum = sum_illum / 16
+            avg_cct = np.nanmean(acs_cct)
+            min_illum = np.nanmin(II_illum)
+            if (avg_illum != 0):
+                uniformity = min_illum / avg_illum
+
+            print("평균조도\t 타겟 색온도\t 평균 색온도\t 균제도")
+            print(avg_illum, "\t", cct_now, "\t", avg_cct, "\t", uniformity)
+
+
 
         else:
             # 이후 알고리즘들
@@ -234,10 +292,10 @@ def process():
         # 1분주기로 반복.(카스 재측정시간)
         # time.sleep(10)
 
-        cct_now=cct_now+10
-
-        if cct_now >8000:
-            break
+        # cct_now=cct_now+10
+        #
+        # if cct_now >8000:
+        #     break
 
 
 

@@ -25,6 +25,7 @@ def re_ack(sock):
 def set_LED(num, ch1, ch2, ch3, ch4):
     global LED_state
     global flag
+    flag = False
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     msg = "AT+CONTROL=FLAT_PWM,A,%d,%d,%d,%d,%d\r\n" % (num, ch1, ch2, ch3, ch4)

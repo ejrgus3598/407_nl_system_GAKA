@@ -10,6 +10,7 @@ import threading, time
 from Core.arduino_color_sensor import acs
 from Core.Intsain_Illum import II
 from Core.Intsain_Curr import IC
+from Core import switch
 
 def find_nearest(array, value):
     array = np.asarray(array)
@@ -25,7 +26,11 @@ def update_state(ch, updown):
     if ch == 0:
         return 0
     else:
-        return ch+updown
+        re = ch+updown
+        if re < 0:
+            return 0
+        else:
+            return re
 
 def process():
     # 싱글톤 데이터 센터 로드.
@@ -40,7 +45,7 @@ def process():
     target_illum = [24,122,24,77,295,24,46,168,62,24,24,24,24,24,62,62,77,24,24,225,24,46,263,24,24,62,24,138,24,24]
     target_illum1 = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
     # 기준 조도, 색온도 설정
-    cct_now = 2700
+    cct_now = 7400
 
     while True:
         mongo_df = load_NL_CCT_mongo()
@@ -60,9 +65,10 @@ def process():
         temp_df = control_pd[mask]
         temp_df = temp_df.reset_index(drop=True)
         count = 0
+        first = True
         up_and_down = 0
-        while True:
-            if count ==0:
+        while count<5:
+            if first:
                 for i in range(len(target_illum)):
                     target_illum1[i] = find_nearest(temp, target_illum[i])
                     final_df = temp_df[temp_df['illum'] == target_illum1[i]]
@@ -81,6 +87,7 @@ def process():
                     ch4 = int(final_df['ch.4'].values[0] / cut)
                     # print(i+1,ch1, ch2, ch3, ch4)
                     ILED.set_LED(i + 1, ch1, ch2, ch3, ch4)
+                    first = False
 
             else:
                 for i in range(len(target_illum)):
@@ -93,10 +100,49 @@ def process():
                     # print(i+1,ch1, ch2, ch3, ch4)
                     ILED.set_LED(i + 1, ch1, ch2, ch3, ch4)
 
-            # print(ILED.get_LED_state())
+            print(ILED.get_LED_state())
 
-            time.sleep(10)
 
+            #  데이터 수집에 문제가 있는지 체크
+
+            for i in range(1, 10):
+                acs1.set_sensor_data(i, 0, 0)
+                II1.set_illum_data(i-1,0)
+                IC1.set_curr_data(i-1,0)
+            data_flag = True
+            data_count = 0
+            while data_flag:
+                # print(data_count)
+                data_flag = False
+
+                acs_cct = acs1.get_sensor_data()[0][:9]
+                II_illum = II1.get_illum_data()[:9]
+                IC_curr = IC1.get_curr_data()[:9]
+
+                for i in acs_cct:
+                    if i == 0:
+                        data_flag = True
+                        continue
+
+                for i in II_illum:
+                    if i == 0:
+                        data_flag = True
+                        continue
+
+                for i in IC_curr:
+                    if i == 0:
+                        data_flag = True
+                        continue
+
+                if data_count>100:
+                    # print(data_count, "?")
+                    switch.onnoff()
+                    data_count =0
+                else:
+                    time.sleep(0.5)
+                    data_count = data_count +1
+
+            #문제없으면 받아와서 알고리즘 실행
             acs_cct = acs1.get_sensor_data()[0][:9]
             II_illum = II1.get_illum_data()[:9]
             IC_curr = IC1.get_curr_data()[:9]
@@ -121,11 +167,18 @@ def process():
             print("평균조도\t 타겟 색온도\t 평균 색온도\t 균제도")
             print(avg_illum, "\t", cct_now, "\t", avg_cct, "\t", uniformity)
 
-            if (abs(500 - avg_illum) > 10):
+            if (abs(500 - avg_illum) > 20):
 
-                scale = int(abs(500 - avg_illum)/30)+1
+                scale = (abs(500 - avg_illum)/30)
+                if scale-int(scale) >0.5:
+                    scale = int(scale)+1
+                else:
+                    scale = int(scale)
+
                 print(scale,"이만큼!")
-                count = count+1
+                if scale ==1:
+                    count = count+1
+
                 if avg_illum < 500:
                     up_and_down = scale
                     print("+조정!")
@@ -134,7 +187,7 @@ def process():
                     up_and_down = -1*scale
                     print("-조정!")
 
-                continue
+                # continue
 
 
 
@@ -155,7 +208,8 @@ def process():
         # time.sleep(10)
 
         cct_now=cct_now+10
-        if cct_now >6500:
+
+        if cct_now >8000:
             break
 
 

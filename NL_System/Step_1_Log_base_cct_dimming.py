@@ -50,11 +50,11 @@ def process():
     target_illum = [24,122,24,77,295,24,46,168,62,24,24,24,24,24,62,62,77,24,24,225,24,46,263,24,24,62,24,138,24,24]
     target_illum1 = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
     # 기준 조도, 색온도 설정
-    cct_now = 2700
+    # cct_now = 2700
 
     while True:
         mongo_df = load_NL_CCT_mongo()
-        # cct_now = float(mongo_df['CCT'].values[0])
+        cct_now = float(mongo_df['CCT'].values[0])
         # cct_now = 2700
         print("실시간 cas cct :"+str(cct_now))
 
@@ -292,10 +292,10 @@ def process():
         # 1분주기로 반복.(카스 재측정시간)
         # time.sleep(10)
 
-        cct_now=cct_now+10
-
-        if cct_now >8000:
-            break
+        # cct_now=cct_now+500
+        #
+        # if cct_now >8000:
+        #     break
 
 
 

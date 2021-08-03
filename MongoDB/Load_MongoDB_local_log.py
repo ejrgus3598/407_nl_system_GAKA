@@ -72,7 +72,8 @@ def mongodb_to_df(dic_list,main_key):
         val_table = []
         count = count + 1
 
-        data_dic = dic[main_key]
+        data_dic = dic
+        # data_dic = dic[main_key]
         key_val = make_row_key_val(data_dic)
         val_table.append(key_val[1])
         keys = key_val[0]
@@ -96,7 +97,6 @@ def mongodb_to_df_LED(dic_list,main_key,i):
     for dic in dic_list:
         val_table = []
         count = count + 1
-
         data_dic = dic[main_key][str(i)]
         key_val = make_row_key_val(data_dic)
         val_table.append(key_val[1])
@@ -117,14 +117,15 @@ if __name__ == '__main__':
     step_data = load_last1_cct()
     step_df = mongodb_to_df(step_data,'result')
     step_df = step_df.reset_index(drop=True)
-    print(step_df['avg_cct'])
-    # step_df.to_csv('./log.csv')
+    # print(step_df['avg_cct'])
+    step_df.to_csv('./log.csv')
 
 def process(main_key):
     step_data = load_last1_cct()
     step_df = mongodb_to_df(step_data, main_key)
     step_df = step_df.reset_index(drop=True)
     return step_df
+
 
 def get_LED_state(main_key,idx):
     step_data = load_last1_cct()
@@ -143,3 +144,5 @@ def get_LED_state(main_key,idx):
         ILED.set_LED(i + 1, ch1, ch2, ch3, ch4)
 
     return 0
+
+

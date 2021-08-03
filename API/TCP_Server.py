@@ -21,9 +21,29 @@ def process():
             illum = float(str[1].split("=")[1])
             cct = float(str[2].split("=")[1])
             # print(num, "번 들어옴")
+            # 30개 보정식(지금 FULL_CONTROL하던건 이걸로.)
+            # if(num == 1) :
+            #     cct = (1.24498696*cct)-1105.423232
+            # elif (num == 2) :
+            #     cct = (1.24062724*cct)-1106.674882
+            # elif (num == 3) :
+            #     cct = (1.25937117*cct)-1090.490959
+            # elif (num == 4) :
+            #     cct = (1.27553676*cct)-1174.399201
+            # elif (num == 5) :
+            #     cct = (1.19333697*cct)-1105.055017
+            # elif (num == 6) :
+            #     cct = (1.12704578*cct)-1062.479705
+            # elif (num == 7) :
+            #     cct = (1.1664019*cct)-1124.688802
+            # elif (num == 8) :
+            #     cct = (1.235*cct)-1085.5
+            # elif (num == 9) :
+            #     cct = (1.18249764*cct)-1139.85934302
+
+            # 요건 세현이형 하던 보정식
             if (num == 1):
                 cct = (1.1062 * cct) - 618.65
-                # acs1.get_sensor_data()
             elif (num == 2):
                 cct = (1.1011 * cct) - 617.02
             elif (num == 3):
@@ -48,7 +68,8 @@ def process():
 
             # Send one HTTP header line into socket
             # connectionSocket.send('HTTP/1.0 200 OK\r\n\r\n')
-        except IOError:
+        except Exception as err:
+            print(err)
             # Send response message for file not found
             # connectionSocket.send('404 Not Found')
             # Close client socket

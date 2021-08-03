@@ -16,6 +16,7 @@ def re_ack(sock):
     global flag
     try:
         recvMsg, addr = sock.recvfrom(500)
+        print(recvMsg)
         flag = True
 
     except:
@@ -50,7 +51,7 @@ def all_set_LED(ch1, ch2, ch3, ch4):
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     for i in range(1,31):
-        print(i)
+        # print(i)
         flag = False
         msg = "AT+CONTROL=FLAT_PWM,A,%d,%d,%d,%d,%d\r\n" % (i, ch1, ch2, ch3, ch4)
         # print(LED_state[i-1])
@@ -61,7 +62,7 @@ def all_set_LED(ch1, ch2, ch3, ch4):
             api = threading.Thread(target=re_ack, args=(sock,))
             api.daemon = True
             api.start()
-            time.sleep(0.1)
+            time.sleep(0.3)
 
 
             if flag:
@@ -77,4 +78,10 @@ def get_LED_state():
 
 if __name__ == '__main__':
     all_set_LED(0,0,0,0)
-    # set_LED(30, 100, 0, 0, 0)
+    # for i in range(30):
+    # set_LED(1, 0, 0, 0, 0)
+    # set_LED(2, 0, 0, 0, 0)
+    # set_LED(3, 0, 0, 0, 0)
+    # set_LED(4, 0, 0, 0, 0)
+    # set_LED(5, 0, 0, 0, 0)
+    # set_LED(6, 0, 0, 0, 0)

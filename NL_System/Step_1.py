@@ -45,7 +45,7 @@ def process():
     target_illum = [24,122,24,77,295,24,46,168,62,24,24,24,24,24,62,62,77,24,24,225,24,46,263,24,24,62,24,138,24,24]
     target_illum1 = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
     # 기준 조도, 색온도 설정
-    cct_now = 7400
+    cct_now = 2700
 
     while True:
         mongo_df = load_NL_CCT_mongo()
@@ -59,8 +59,8 @@ def process():
         control_pd["cct"] = control_pd["cct"].astype(float)
 
         # 반복 포인트 if 를 더해서.
-        mask = (control_pd.cct >= cct_now - 50) & (control_pd.cct <= cct_now + 50)
-        # print(control_pd[mask][['idx', 'ch.1', 'ch.2', 'ch.3', 'ch.4', 'illum', 'cct']])
+        mask = (control_pd.cct >= cct_now - 50) & (control_pd.cct <= cct_now + 50) & (control_pd.zero_count<=2)
+        print(control_pd[mask][['idx', 'ch.1', 'ch.2', 'ch.3', 'ch.4', 'illum', 'cct']])
         temp = control_pd[mask]['illum'].values
         temp_df = control_pd[mask]
         temp_df = temp_df.reset_index(drop=True)
@@ -193,6 +193,7 @@ def process():
 
             else:
                 print("완벽!")
+                # 여기서 색온도 디밍 한번 더 해야함. 원래는...
                 result_pd = pd.DataFrame([[avg_illum, cct_now, avg_cct, uniformity]], columns=['avg_illum', 'cct_now', 'avg_cct', 'uniformity'])
                 print(result_pd)
 

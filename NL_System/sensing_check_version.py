@@ -106,8 +106,9 @@ def sensing_data(cct_now):
 
     # print(acs_cct)
 
+    # 3차원 면보정식
     # for i in range(9):
-    #     면보정식..자린데..ㅜㅜ
+    #     acs_cct[i] = (acs_cct[i] * 1.207566) + (II_illum[i] * -0.74406) + 494.1541
 
     # print(acs_cct)
 
@@ -125,8 +126,8 @@ def sensing_data(cct_now):
         5] * 2 + \
                 II_illum[6] + II_illum[7] * 2 + II_illum[8]
     avg_illum = sum_illum / 16
-    avg_cct = np.nanmean(acs_cct)
-    min_illum = np.nanmin(II_illum)
+    avg_cct = np.nanmean(acs_cct[:9])
+    min_illum = np.nanmin(II_illum[:9])
     if (avg_illum != 0):
         uniformity = min_illum / avg_illum
 

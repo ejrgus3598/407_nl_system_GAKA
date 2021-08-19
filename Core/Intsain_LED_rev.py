@@ -37,7 +37,7 @@ def set_LED(num, ch1, ch2, ch3, ch4):
         api = threading.Thread(target=re_ack, args=(sock,))
         api.daemon = True
         api.start()
-        time.sleep(0.1)
+        time.sleep(0.3)
 
         if flag:
             LED_state[num-1] = [num, ch1, ch2, ch3, ch4]

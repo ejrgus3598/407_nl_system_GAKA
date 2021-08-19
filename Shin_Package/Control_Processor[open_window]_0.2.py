@@ -1,5 +1,6 @@
 # 암막, 자연광 색온도, 실시간, cas, 필요조도, 색온도 재현
 import pandas as pd
+from datetime import datetime
 
 from Core import switch
 from MongoDB import Load_MongoDB as LMDB
@@ -43,32 +44,95 @@ import Shin_Package.shin_Intsain_LED as led
         초기화 하면서 총영향도에 기반한 제어로 변경
 """
 
+"""
+Open_Window
+0.1 :   DarkRoom을 OpenWindow로 변화하는 과정 만족한다면 멈춤
+        영향도를 총 영향도 전체로 변환
+        
+0.2 :   제어지표를 재도출하여 늘림
+"""
+
 # 제어조건(변형가능)
 led_lock_range = 2  # LED 잠금시 잠굴 범위 값
 similar_led_range = 1  # 방향성고려나 제어조도기준 선정할 때 영향도의 비슷한 범위를 위한 값
 object_illum = 500
 first_matched = False
+save_folder = "1"
 
 # 저장 변수
 df_record = []
+led_state_case_limit = []
+illum_adder = []
 
 # led control index
-led_control = [[0, 0, 0, 0], [0, 16, 0, 0], [16, 8, 8, 0], [16, 16, 8, 8], [0, 32, 16, 0], [32, 0, 32, 0],
-               [32, 16, 32, 0], [32, 32, 0, 16], [32, 32, 16, 16], [0, 64, 16, 16], [48, 16, 48, 0], [48, 32, 32, 16],
-               [64, 32, 0, 32], [16, 64, 48, 0], [0, 80, 32, 16], [16, 80, 32, 16], [0, 80, 48, 0],
-               [64, 16, 64, 0], [64, 32, 48, 16], [48, 64, 16, 32], [16, 96, 0, 32], [64, 32, 64, 0],
-               [80, 32, 32, 32], [64, 48, 32, 32], [0, 112, 0, 32], [32, 80, 48, 16], [32, 96, 16, 32],
-               [16, 112, 16, 32], [32, 80, 64, 0], [48, 80, 32, 32], [0, 112, 48, 16], [96, 16, 64, 16],
-               [16, 112, 48, 16], [80, 32, 80, 0], [96, 48, 0, 48], [32, 112, 32, 32], [64, 64, 64, 16],
-               [16, 128, 32, 32], [128, 0, 32, 48], [128, 16, 32, 48], [80, 64, 48, 32], [64, 96, 0, 48],
-               [80, 80, 16, 48], [128, 32, 32, 48], [128, 0, 64, 32], [112, 16, 96, 0], [48, 112, 48, 32],
-               [16, 128, 80, 0], [48, 128, 16, 48], [160, 16, 0, 64], [160, 16, 16, 63], [80, 64, 96, 0],
-               [128, 0, 96, 16], [128, 16, 96, 15], [64, 96, 80, 15], [128, 64, 0, 63], [128, 16, 111, 0],
-               [48, 112, 95, 0], [0, 192, 16, 47], [0, 160, 80, 15], [0, 160, 95, 0]]
-led_control_lux = [0, 24, 46, 62, 77, 122, 138, 154, 168, 225, 254, 263, 310, 315, 322, 345, 353, 368, 377,
-                   387, 395, 409, 416, 422, 431, 443, 450, 467, 475, 484, 498, 507, 519, 523, 532, 545, 557, 562, 571,
-                   586, 594, 602, 612, 626, 636, 648, 660, 668, 676, 688, 696, 702, 713, 726, 733, 744, 756, 764, 773,
-                   782, 813]  # 174, 295 제거
+# led_control = [[0, 0, 0, 0], [0, 16, 0, 0], [16, 8, 8, 0], [16, 16, 8, 8], [0, 32, 16, 0], [32, 0, 32, 0],
+#                [32, 16, 32, 0], [32, 32, 0, 16], [32, 32, 16, 16], [0, 64, 16, 16], [48, 16, 48, 0], [48, 32, 32, 16],
+#                [64, 32, 0, 32], [16, 64, 48, 0], [0, 80, 32, 16], [16, 80, 32, 16], [0, 80, 48, 0],
+#                [64, 16, 64, 0], [64, 32, 48, 16], [48, 64, 16, 32], [16, 96, 0, 32], [64, 32, 64, 0],
+#                [80, 32, 32, 32], [64, 48, 32, 32], [0, 112, 0, 32], [32, 80, 48, 16], [32, 96, 16, 32],
+#                [16, 112, 16, 32], [32, 80, 64, 0], [48, 80, 32, 32], [0, 112, 48, 16], [96, 16, 64, 16],
+#                [16, 112, 48, 16], [80, 32, 80, 0], [96, 48, 0, 48], [32, 112, 32, 32], [64, 64, 64, 16],
+#                [16, 128, 32, 32], [128, 0, 32, 48], [128, 16, 32, 48], [80, 64, 48, 32], [64, 96, 0, 48],
+#                [80, 80, 16, 48], [128, 32, 32, 48], [128, 0, 64, 32], [112, 16, 96, 0], [48, 112, 48, 32],
+#                [16, 128, 80, 0], [48, 128, 16, 48], [160, 16, 0, 64], [160, 16, 16, 63], [80, 64, 96, 0],
+#                [128, 0, 96, 16], [128, 16, 96, 15], [64, 96, 80, 15], [128, 64, 0, 63], [128, 16, 111, 0],
+#                [48, 112, 95, 0], [0, 192, 16, 47], [0, 160, 80, 15], [0, 160, 95, 0]]
+# led_control_lux = [0, 24, 46, 62, 77, 122, 138, 154, 168, 225, 254, 263, 310, 315, 322, 345, 353, 368, 377,
+#                    387, 395, 409, 416, 422, 431, 443, 450, 467, 475, 484, 498, 507, 519, 523, 532, 545, 557, 562, 571,
+#                    586, 594, 602, 612, 626, 636, 648, 660, 668, 676, 688, 696, 702, 713, 726, 733, 744, 756, 764, 773,
+#                    782, 813]  # 174, 295 제거
+
+# new led control index
+led_control = [[0, 0, 0, 0], [0, 16, 0, 0], [0, 14, 6, 0], [0, 14, 7, 0], [0, 13, 9, 0], [0, 14, 8, 0], [0, 15, 7, 0],
+               [0, 15, 8, 0], [0, 16, 8, 0], [0, 16, 9, 0], [0, 16, 10, 0], [0, 17, 9, 0], [0, 17, 10, 0],
+               [0, 18, 11, 0], [0, 18, 12, 0], [0, 19, 11, 0], [0, 19, 12, 0], [0, 20, 11, 0], [0, 20, 12, 0],
+               [0, 20, 13, 0], [0, 21, 13, 0], [0, 22, 13, 0], [0, 22, 14, 0], [0, 21, 15, 0], [0, 23, 14, 0],
+               [0, 25, 13, 0], [0, 24, 14, 0], [0, 23, 15, 0], [0, 25, 14, 0], [0, 24, 15, 0], [0, 25, 15, 0],
+               [0, 24, 16, 0], [0, 25, 16, 0], [0, 26, 16, 0], [0, 27, 16, 0], [0, 28, 15, 0], [0, 27, 17, 0],
+               [0, 28, 16, 0], [0, 28, 17, 0], [0, 29, 16, 0], [0, 29, 17, 0], [0, 29, 18, 0], [0, 30, 17, 0],
+               [0, 29, 19, 0], [0, 29, 20, 0], [0, 30, 18, 0], [0, 30, 19, 0], [0, 30, 20, 0], [0, 31, 19, 0],
+               [0, 30, 21, 0], [0, 31, 20, 0], [0, 31, 21, 0], [0, 32, 20, 0], [0, 32, 21, 0], [0, 31, 23, 0],
+               [0, 33, 20, 0], [0, 32, 23, 0], [0, 33, 21, 0], [0, 33, 22, 0], [0, 33, 23, 0], [0, 34, 22, 0],
+               [0, 34, 23, 0], [0, 35, 22, 0], [0, 34, 24, 0], [0, 34, 25, 0], [0, 35, 24, 0], [0, 34, 26, 0],
+               [0, 36, 23, 0], [0, 36, 24, 0], [0, 37, 23, 0], [0, 36, 25, 0], [0, 37, 24, 0], [0, 36, 26, 0],
+               [0, 37, 25, 0], [0, 37, 26, 0], [0, 38, 25, 0], [0, 37, 27, 0], [0, 39, 24, 0], [0, 38, 26, 0],
+               [0, 39, 25, 0], [0, 38, 27, 0], [0, 39, 26, 0], [0, 40, 25, 0], [0, 38, 28, 0], [0, 39, 27, 0],
+               [0, 41, 25, 0], [0, 39, 28, 0], [0, 40, 27, 0], [0, 41, 26, 0], [0, 40, 28, 0], [0, 39, 30, 0],
+               [0, 41, 28, 0], [0, 42, 27, 0], [0, 41, 29, 0], [0, 42, 28, 0], [0, 43, 27, 0], [0, 41, 30, 0],
+               [0, 42, 29, 0], [0, 42, 30, 0], [0, 43, 29, 0], [0, 43, 30, 0], [0, 44, 29, 0], [0, 44, 30, 0],
+               [0, 45, 29, 0], [0, 44, 31, 0], [0, 45, 30, 0], [0, 45, 31, 0], [0, 46, 30, 0], [0, 46, 31, 0],
+               [0, 47, 30, 0], [0, 46, 32, 0], [0, 47, 31, 0], [0, 48, 30, 0], [0, 47, 32, 0], [0, 49, 30, 0],
+               [0, 46, 34, 0], [0, 48, 32, 0], [0, 49, 31, 0], [0, 48, 33, 0], [0, 49, 32, 0], [0, 48, 34, 0],
+               [0, 49, 33, 0], [0, 50, 32, 0], [0, 50, 33, 0], [0, 49, 34, 0], [0, 49, 35, 0], [0, 50, 34, 0],
+               [0, 52, 34, 0], [0, 51, 34, 0], [0, 50, 36, 0], [0, 51, 35, 0], [0, 53, 33, 0], [0, 50, 37, 0],
+               [0, 52, 35, 0], [0, 54, 33, 0], [0, 52, 36, 0], [0, 53, 35, 0], [0, 54, 34, 0], [0, 53, 36, 0],
+               [0, 55, 34, 0], [0, 54, 36, 0], [0, 55, 35, 0], [0, 56, 34, 0], [0, 53, 38, 0], [0, 54, 37, 0],
+               [0, 55, 36, 0], [0, 55, 37, 0], [0, 56, 36, 0], [0, 55, 38, 0], [0, 56, 37, 0], [0, 58, 35, 0],
+               [0, 55, 39, 0], [0, 56, 38, 0], [0, 54, 41, 0], [0, 57, 38, 0], [0, 59, 36, 0], [0, 55, 41, 0],
+               [0, 57, 39, 0], [0, 60, 36, 0], [0, 56, 41, 0], [0, 58, 39, 0], [0, 59, 38, 0], [0, 60, 37, 0],
+               [0, 56, 42, 0], [0, 59, 39, 0], [0, 60, 38, 0], [0, 58, 41, 0], [0, 59, 40, 0], [0, 59, 41, 0],
+               [0, 60, 40, 0], [0, 62, 38, 0], [0, 58, 43, 0], [0, 59, 42, 0], [0, 61, 40, 0], [0, 62, 39, 0],
+               [0, 60, 42, 0], [0, 61, 41, 0], [0, 62, 40, 0], [0, 62, 41, 0], [0, 63, 40, 0], [0, 60, 44, 0],
+               [0, 62, 42, 0], [0, 63, 41, 0], [0, 63, 42, 0], [0, 64, 41, 0], [0, 61, 45, 0], [0, 63, 43, 0],
+               [0, 64, 42, 0], [0, 66, 40, 0], [0, 61, 46, 0], [0, 64, 43, 0], [0, 65, 42, 0], [0, 67, 40, 0],
+               [0, 64, 44, 0], [0, 65, 43, 0], [0, 68, 40, 0], [0, 64, 45, 0], [0, 66, 43, 0], [0, 68, 41, 0],
+               [0, 63, 47, 0], [0, 66, 44, 0], [0, 68, 42, 0], [0, 67, 44, 0], [0, 68, 43, 0], [0, 69, 42, 0],
+               [0, 67, 45, 0], [0, 68, 44, 0], [0, 69, 43, 0], [0, 66, 47, 0], [0, 67, 46, 0], [0, 68, 45, 0],
+               [0, 70, 43, 0], [0, 67, 47, 0], [0, 69, 45, 0], [0, 70, 44, 0], [0, 67, 48, 0], [0, 69, 46, 0],
+               [0, 71, 44, 0], [0, 68, 48, 0], [0, 69, 47, 0], [0, 70, 46, 0], [0, 72, 44, 0], [0, 69, 48, 0],
+               [0, 70, 47, 0], [0, 71, 46, 0], [0, 70, 48, 0], [0, 71, 47, 0], [0, 69, 50, 0], [0, 70, 49, 0],
+               [0, 72, 47, 0], [0, 69, 51, 0], [0, 73, 47, 0]]
+led_control_lux = [0, 24, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36, 37, 38, 43, 44, 45, 46, 48, 49, 51, 53, 55, 56, 57,
+                   58, 59, 60, 61, 62, 63, 64, 66, 67, 68, 70, 71, 72, 73, 74, 76, 78, 79, 80, 81, 82, 83, 84, 85, 86,
+                   88, 89, 91, 92, 93, 94, 96, 97, 98, 100, 101, 103, 104, 105, 107, 108, 109, 110, 112, 113, 114, 115,
+                   116, 117, 118, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 132, 133, 134, 135, 137, 138,
+                   139, 141, 142, 143, 144, 145, 148, 149, 151, 152, 154, 155, 157, 158, 161, 162, 164, 166, 167, 168,
+                   169, 170, 171, 173, 174, 175, 177, 178, 180, 181, 182, 184, 185, 186, 187, 189, 190, 193, 194, 195,
+                   196, 197, 198, 200, 201, 202, 203, 204, 206, 207, 208, 209, 210, 211, 213, 214, 216, 217, 218, 219,
+                   220, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 236, 237, 238, 239, 240, 241,
+                   242, 243, 244, 245, 246, 247, 249, 250, 252, 253, 254, 255, 256, 257, 258, 259, 260, 261, 262, 263,
+                   264, 265, 266, 267, 268, 269, 270, 271, 272, 273, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284,
+                   285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 296, 297, 299, 300, 301, 302, 303, 304, 306]
 
 # init LED state
 led_state_0 = [0,
@@ -77,12 +141,6 @@ led_state_0 = [0,
                0, 0, 0, 0, 0, 0,
                0, 0, 0, 0, 0, 0,
                0, 0, 0, 0, 0, 0]
-led_state = [0,
-             1, 1, 1, 1, 1, 1,
-             1, 1, 1, 1, 1, 1,
-             1, 1, 1, 1, 1, 1,
-             1, 1, 1, 1, 1, 1,
-             1, 1, 1, 1, 1, 1]
 
 led_down_lock = [0,
                  0, 0, 0, 0, 0, 0,
@@ -229,19 +287,36 @@ sensor_influence_value_sum = [2.898907749, 2.893086347, 2.866149815, 2.863490037
                               1.054903321, 1.050562362, 1.050349077]
 
 
-def process():
+def illum_thread(illum_add):
+    change_value = [0.151515, 0.30303, 0.151515]
+    while True:
+        print('CHANGE ILLUM')
+        illum_add[0] += change_value[0]
+        illum_add[2] -= change_value[0]
+
+        illum_add[3] += change_value[1]
+        illum_add[5] -= change_value[1]
+
+        illum_add[6] += change_value[2]
+        illum_add[8] -= change_value[2]
+        time.sleep(60)
+
+
+def start_data_center():
+    # 센싱부 실행
+    base = threading.Thread(target=bp.process)
+    base.start()
+
+
+def process(start, case_num):
     # 싱글톤 데이터 센터 로드.
     acs1 = acs.getInstance()
     II1 = II.getInstance()
     IC1 = IC.getInstance()
 
-    # 센싱부 실행
-    base = threading.Thread(target=bp.process)
-    base.start()
-
     # 초기 변수 설정
     first_matched = True
-    first=True
+    first = True
     get_times = 0
     wait_curr = 0
     wait_illum = [0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -314,13 +389,19 @@ def process():
         led_control_use_state(led_control, led_state)
         time.sleep(5)
 
+    isFinish = True
+
+    illum_add_thread = threading.Thread(target=illum_thread, args=(illum_add,))
+    illum_add_thread.start()
 
     # 제어 시작
-    while True:
+    while isFinish:
         """
         센서 데이터의 일관성을 위해 값을 0으로 초기화 하고
         모든 데이터가 받을때까지 검사하다가 받는 순간 알고리즘 시작
         """
+        locking_init()
+
         # 센서 데이터 초기화
         for i in range(1, 10):
             acs1.set_sensor_data(i, 0, 0)
@@ -375,8 +456,8 @@ def process():
         # noon_lux=[298.24,132.78,233.07,54.99,59.87,84.62,35.40,39.68,33.08] # 1300cm, 90도
         # noon_lux=[283.60,122.47,210.18,52.06,55.15,76.40,32.89,35.99,30.50] # 1350cm, 90도
         # noon_lux=[283.60,123.33,218.36,51.09,55.15,78.22,32.89,35.99,30.50] # 1400cm, 90도
-        # for i in range(9):
-        #     II_illum[i]+=noon_lux[i]
+        for i in range(9):
+            II_illum[i] += illum_add[i]
         ###############################################################################
 
         # 필요 변수 설정
@@ -434,11 +515,11 @@ def process():
 
         if (sensor_up_lock_cnt[0] == 9) & (sensor_down_lock_cnt[0] == 9):
             print("All LED LOCK")
-            exit()
+            break
         get_times += 1
 
         if first:
-            first=False
+            first = False
             # 480<= 지점별 조도 <= 520 안에 모든 지점이 만족한다면 스텝별 저장이름에 success를 추가해서 저장
             save_flag = True
             for i in range(9):
@@ -447,18 +528,21 @@ def process():
                     break
             # 기준을 만족하는 경우랑 일반의 경우 step 별로 저장
             if (490 <= avg_illum) & (avg_illum <= 510) & save_flag:
-                save_data(df_record, acs_cct, II_illum, IC_curr, avg_cct, avg_illum, sum_curr, uniformity, get_times,
+                save_data(start, df_record, acs_cct, II_illum, IC_curr, avg_cct, avg_illum, sum_curr, uniformity,
+                          get_times,
                           "_success_E%s_U%s" % (int(sum_curr), uniformity), True)
             else:
-                save_data(df_record, acs_cct, II_illum, IC_curr, avg_cct, avg_illum, sum_curr, uniformity, get_times,
+                save_data(start, df_record, acs_cct, II_illum, IC_curr, avg_cct, avg_illum, sum_curr, uniformity,
+                          get_times,
                           "_E%s_U%s" % (int(sum_curr), uniformity), False)
 
             # 현재 제어상태를 총영향도에 기반한 제어상태로 변경
-            if (avg_illum > 500):
-                led_setting_based_on_influence_sum(False)
-            else:
-                led_setting_based_on_influence_sum(True)
-        else :
+            # if (avg_illum > 500):
+            #     led_setting_based_on_influence_sum(False)
+            # else:
+            #     led_setting_based_on_influence_sum(True)
+        else:
+            save_flag = True
             if (avg_illum < 490):
                 print("AVG Illum is Low")
                 illum_before_needs(II_illum, avg_illum)
@@ -469,26 +553,36 @@ def process():
                 # 조도가 극한으로 높은 상황에서 만족상태를 달성할때까지 보면
                 # 조명을 24[첫단계]로 끄는 경우 때문에
                 # 지점을 잠궈버리는 경우가 많음
+                for i in range(9):
+                    if (II_illum[i] < 480) | (520 < II_illum[i]):
+                        save_flag = False
+                        break
                 if first_matched:
                     first_matched = False
                     locking_init()
+                if save_flag:
+                    print("ILLUM is Enough. [WAIT]")
+                    continue
                 illum_match_needs(II_illum, avg_illum)
             elif (510 < avg_illum):
                 print("AVG Illum is High")
                 illum_after_needs(II_illum, avg_illum)
 
             # 480<= 지점별 조도 <= 520 안에 모든 지점이 만족한다면 스텝별 저장이름에 success를 추가해서 저장
-            save_flag = True
-            for i in range(9):
-                if (II_illum[i] < 480) | (520 < II_illum[i]):
-                    save_flag = False
-                    break
+
             # 기준을 만족하는 경우랑 일반의 경우 step 별로 저장
             if (490 <= avg_illum) & (avg_illum <= 510) & save_flag:
-                save_data(df_record, acs_cct, II_illum, IC_curr, avg_cct, avg_illum, sum_curr, uniformity, get_times,
+                time.sleep(5)
+                # 값 불러옴
+                acs_cct = acs1.get_sensor_data()[0][:9]
+                II_illum = II1.get_illum_data()[:9]
+                IC_curr = IC1.get_curr_data()[:10]
+                save_data(start, df_record, acs_cct, II_illum, IC_curr, avg_cct, avg_illum, sum_curr, uniformity,
+                          get_times,
                           "_success_E%s_U%s" % (int(sum_curr), uniformity), True)
             else:
-                save_data(df_record, acs_cct, II_illum, IC_curr, avg_cct, avg_illum, sum_curr, uniformity, get_times,
+                save_data(start, df_record, acs_cct, II_illum, IC_curr, avg_cct, avg_illum, sum_curr, uniformity,
+                          get_times,
                           "_E%s_U%s" % (int(sum_curr), uniformity), False)
 
         # 현재 데이터 상태 출력
@@ -496,7 +590,10 @@ def process():
         print_led_locking_state(led_up_lock, "UP")
         print_led_locking_state(led_down_lock, "DOWN")
         print_sensor_locking_state()
-        time.sleep(5)
+        print_natural_light_state()
+        # if(get_times>=led_state_case_limit[case_num]):
+        #     isFinish=False
+        #     break
 
 
 # 잠금 초기화 하는 함수[조명 업,다운, 센서]
@@ -511,8 +608,10 @@ def locking_init():
 
 
 # 스텝별로 제어 상태, 센서 값 저장하는 함수
-def save_data(df_record, acs_cct, II_illum, IC_curr, avg_cct, avg_illum, sum_curr, uniformity, get_times, save_name,
+def save_data(start, df_record, acs_cct, II_illum, IC_curr, avg_cct, avg_illum, sum_curr, uniformity, get_times,
+              save_name,
               isPrint):
+    step_end = datetime.now()
     led_num_list = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
                     25, 26, 27, 28, 29, 30]
     df_record.append(pd.DataFrame(led_num_list, columns=['led']))
@@ -522,12 +621,16 @@ def save_data(df_record, acs_cct, II_illum, IC_curr, avg_cct, avg_illum, sum_cur
             df_record[len(df_record) - 1].loc[idx - 1, 'cct'] = acs_cct[idx - 1]
             df_record[len(df_record) - 1].loc[idx - 1, 'illum'] = II_illum[idx - 1]
             df_record[len(df_record) - 1].loc[idx - 1, 'curr'] = IC_curr[idx - 1]
+            df_record[len(df_record) - 1].loc[idx - 1, 'natural_light'] = illum_add[idx - 1]
         elif (idx < 11):
             df_record[len(df_record) - 1].loc[idx - 1, 'curr'] = IC_curr[idx - 1]
     df_record[len(df_record) - 1].loc[10, 'cct'] = avg_cct
     df_record[len(df_record) - 1].loc[10, 'illum'] = avg_illum
     df_record[len(df_record) - 1].loc[10, 'curr'] = sum_curr
     df_record[len(df_record) - 1].loc[0, 'uniformity'] = uniformity
+    df_record[len(df_record) - 1].loc[0, 'start'] = start
+    df_record[len(df_record) - 1].loc[0, 'end'] = step_end
+    df_record[len(df_record) - 1].loc[0, 'diff_time'] = step_end - start
 
     if (isPrint):
         print('=' * 20)
@@ -535,8 +638,8 @@ def save_data(df_record, acs_cct, II_illum, IC_curr, avg_cct, avg_illum, sum_cur
         print('=' * 20)
 
     df_record[len(df_record) - 1].to_csv(
-        "D:\\BunkerBuster\\Desktop\\shin_excel\\24시작\\[%s]_step%s.csv" % (
-            get_times - 1, save_name))
+        "D:\\BunkerBuster\\Desktop\\shin_excel\\24시작\\시간측정실험\\%s\\[%s]_step%s.csv" % (
+            save_folder, get_times - 1, save_name))
 
 
 # 현재 컨트롤 lux 상태 출력
@@ -578,6 +681,13 @@ def print_sensor_locking_state():
     print()
 
 
+def print_natural_light_state():
+    for i in range(len(illum_add)):
+        print(illum_add[i], ' ', end='')
+        if (i % 3 == 2):
+            print()
+
+
 # LED 제어
 def control_led(led_num, control_step):
     led.set_LED(led_num, led_control[control_step][0], led_control[control_step][1], led_control[control_step][2],
@@ -587,14 +697,14 @@ def control_led(led_num, control_step):
 # 평균조도가 작은경우
 def illum_before_needs(II_illum, avg_illum):
     target = 99999
-    min_sensor=-1
+    min_sensor = -1
 
     # 최소 지점 선정
     for i in range(9):
         if II_illum[i] < target:
             if sensor_up_lock[i] != 1:
                 min_sensor = i
-                target=II_illum[min_sensor]
+                target = II_illum[min_sensor]
 
     if min_sensor == -1:
         locking_init()
@@ -605,7 +715,7 @@ def illum_before_needs(II_illum, avg_illum):
             led_setting_based_on_influence_sum(True)
         # exit()
 
-    led_up(min_sensor, sensor_influence_sum_part, sensor_influence_value_sum_part)
+    led_up(min_sensor, sensor_influence_sum_all, sensor_influence_value_sum_all)
 
 
 # 평균조도가 만족될떄
@@ -621,7 +731,7 @@ def illum_match_needs(II_illum, avg_illum):
                 diff_max_sensor = i
                 diff_value = II_illum[i] - object_illum
 
-    if diff_max_sensor==-1:
+    if diff_max_sensor == -1:
         locking_init()
         # 현재 제어상태를 총영향도에 기반한 제어상태로 변경
         if (avg_illum > 500):
@@ -654,7 +764,7 @@ def illum_match_needs(II_illum, avg_illum):
 # 평균조도가 초과될 때
 def illum_after_needs(II_illum, avg_illum):
     target = 0
-    max_sensor=-1
+    max_sensor = -1
 
     # 최고 지점 선정
     for i in range(9):
@@ -663,7 +773,7 @@ def illum_after_needs(II_illum, avg_illum):
                 max_sensor = i
                 target = II_illum[max_sensor]
 
-    if max_sensor==-1:
+    if max_sensor == -1:
         locking_init()
         # 현재 제어상태를 총영향도에 기반한 제어상태로 변경
         if (avg_illum > 500):
@@ -672,7 +782,7 @@ def illum_after_needs(II_illum, avg_illum):
             led_setting_based_on_influence_sum(True)
         # exit()
 
-    led_down(max_sensor, sensor_influence_sum_part_reverse, sensor_influence_value_sum_part_reverse)
+    led_down(max_sensor, sersor_influence_sum_all_reverse, sersor_influence_value_sum_all_reverse)
 
 
 # 낮출 조명을 선정하는 단계 영향도는 이전 제어하는 함수에서 설정해준다.
@@ -724,7 +834,8 @@ def select_control_led(sensor, influence_rank, isLow):
     # 낮출 LED 선정 (잠금 X, 제어 상태 최저 X) 영향도가 해당 센서에 가장 높은 조명 중 총영향도가 높은순서
     for i in range(0, len(influence_rank[sensor])):
         if (isLow) & (led_state[influence_rank[sensor][i]] != len(led_control) - 1) & (
-                led_up_lock[influence_rank[sensor][i]] == 0):
+                led_up_lock[influence_rank[sensor][i]] == 0) & (
+                led_max_state[influence_rank[sensor][i]] > led_state[influence_rank[sensor][i]]):
             control_led_idx = influence_rank[sensor][i]
             control_led_rank = i
             print("SELECT UP LED NUM : %s" % control_led_idx)
@@ -800,6 +911,7 @@ def led_locking(led_lock_list, led_lock):
 # 1. 총 영향도가 가장 높은 조명으로 제어단계를 전부 변경
 # 2. 만약 조명이 최고 수치라 올릴 수 없다면 다음 조명으로 변경. 반복
 def led_setting_based_on_influence_sum(isLow):
+    return
     print("First Step Setting")
     print_control_lux()
 
@@ -896,25 +1008,13 @@ def reverse_maker(origin, reverse):
             reverse[i].append(origin[i][j])
 
 
-# led_state = [0,
-#              1, 1, 1, 5, 9, 1,
-#              1, 13, 1, 1, 1, 1,
-#              1, 1, 3, 1, 5, 1,
-#              1, 10, 1, 1, 9, 1,
-#              1, 1, 1, 6, 1, 1]
-# led_state = [0,
-#              1, 5, 1, 5, 9, 1,
-#              1, 9, 1, 1, 1, 1,
-#              1, 1, 3, 1, 5, 1,
-#              1, 10, 1, 1, 10, 1,
-#              1, 2, 1, 6, 1, 1]
-# led_state = [0,
-#              5, 5, 5, 5, 5, 5,
-#              1, 4, 4, 4, 4, 1,
-#              1, 1, 3, 3, 1, 1,
-#              1, 1, 1, 1, 1, 1,
-#              1, 1, 1, 1, 1, 1]
-
+# 24에서 시작
+led_state = [0,
+             1, 1, 1, 1, 1, 1,
+             1, 1, 1, 1, 1, 1,
+             1, 1, 1, 1, 1, 1,
+             1, 1, 1, 1, 1, 1,
+             1, 1, 1, 1, 1, 1]
 # 498에서 시작
 # led_state = [0,
 #              22, 22, 22, 22, 22, 22,
@@ -972,25 +1072,45 @@ led_state = [0,
              1, 1, 1, 1, 22, 22,
              1, 1, 22, 22, 22, 22,
              22, 22, 22, 22, 22, 22]
-led_state_case=[
-                [0,
-                 22, 22, 22, 22, 22, 22,
-                 22, 22, 22, 22, 1, 1,
-                 22, 22, 1, 1, 1, 1,
-                 1, 1, 1, 1, 1, 1,
-                 1, 1, 1, 1, 1, 1],
-                [0,
-                 22, 22, 22, 22, 22, 22,
-                 1, 1, 22, 22, 22, 22,
-                 1, 1, 1, 1, 22, 22,
-                 1, 1, 1, 1, 1, 1,
-                 1, 1, 1, 1, 1, 1],
-                [0,
-                 1, 1, 1, 1, 1, 1,
-                 1, 1, 1, 1, 1, 1,
-                 1, 1, 1, 1, 22, 22,
-                 1, 1, 22, 22, 22, 22,
-                 22, 22, 22, 22, 22, 22]]
+led_state_case = [
+    [0,
+     22, 22, 22, 22, 22, 22,
+     22, 22, 22, 22, 22, 22,
+     22, 22, 22, 22, 22, 22,
+     22, 22, 22, 22, 22, 22,
+     22, 22, 22, 22, 22, 22],
+    [0,
+     22, 22, 22, 22, 22, 22,
+     22, 22, 22, 22, 22, 22,
+     1, 1, 1, 1, 1, 1,
+     1, 1, 1, 1, 1, 1,
+     1, 1, 1, 1, 1, 1],
+    [0,
+     1, 1, 1, 1, 1, 1,
+     1, 1, 1, 1, 1, 1,
+     1, 1, 1, 1, 1, 1,
+     22, 22, 22, 22, 22, 22,
+     22, 22, 22, 22, 22, 22],
+    [0,
+     22, 22, 22, 22, 22, 22,
+     22, 22, 22, 22, 1, 1,
+     22, 22, 1, 1, 1, 1,
+     1, 1, 1, 1, 1, 1,
+     1, 1, 1, 1, 1, 1],
+    [0,
+     22, 22, 22, 22, 22, 22,
+     1, 1, 22, 22, 22, 22,
+     1, 1, 1, 1, 22, 22,
+     1, 1, 1, 1, 1, 1,
+     1, 1, 1, 1, 1, 1],
+    [0,
+     1, 1, 1, 1, 1, 1,
+     1, 1, 1, 1, 1, 1,
+     1, 1, 1, 1, 22, 22,
+     1, 1, 22, 22, 22, 22,
+     22, 22, 22, 22, 22, 22]]
+led_state_case_limit = [800, 500, 500, 500, 500, 500]
+illum_adder = []
 # 가상 자연광 교수님 버전 1
 # led_state = [0,
 #              22, 22, 22, 22, 22, 22,
@@ -1012,43 +1132,67 @@ led_state_case=[
 #              4, 1, 1, 1, 1, 4,
 #              4, 4, 4, 4, 4, 4,
 #              4, 4, 4, 4, 4, 4]
+illum_add = [100, 200, 200,
+             0, 100, 200,
+             0, 0, 100]
 
-# 테스트용
-# led_state = [0,
-#              1,1,1,1,1,1,
-#              1,10,3,3,11,1,
-#              1,1,1,1,1,1,
-#              1,10,3,3,12,1,
-#              1,1,1,1,1,1]
-# 테스트용2
-# led_state = [0,
-#              1,1,1,1,1,1,
-#              1,22,4,5,21,1,
-#              1,1,1,1,1,1,
-#              1,5,1,1,6,1,
-#              1,5,1,1,5,1]
-
-led_state_66_passive = [0,
-                        1, 5, 1, 4, 12, 1,
-                        2, 8, 3, 1, 1, 1,
-                        1, 1, 3, 3, 4, 1,
-                        1, 9, 1, 2, 11, 1,
-                        1, 3, 1, 6, 1, 1]
+led_state = [0,
+             1, 4, 1, 2, 5, 1,
+             1, 9, 4, 4, 7, 1,
+             1, 1, 1, 1, 1, 1,
+             1, 9, 3, 3, 8, 2,
+             1, 4, 1, 2, 8, 2]
+led_max_state = [0,
+                 1, 4, 1, 2, 5, 1,
+                 1, 9, 4, 4, 7, 1,
+                 1, 1, 1, 1, 1, 1,
+                 1, 9, 3, 3, 8, 2,
+                 1, 4, 1, 2, 8, 2]
 
 if __name__ == '__main__':
     # receive_thread_udp=threading.Thread(target=udp.udp_receive())
     # receive_thread_udp.start()
+    timer_data = pd.DataFrame(columns=['start', 'end', 'diff'])
+    start_data_center()
 
-    for led_change in led_state_case:
-        led_state=led_change
-        # influence_maker
-        reverse_maker(sensor_influence_sum_all, sersor_influence_sum_all_reverse)
-        print(sersor_influence_sum_all_reverse)
-        reverse_maker(sensor_influence_value_sum_all, sersor_influence_value_sum_all_reverse)
-        print(sersor_influence_value_sum_all_reverse)
+    # influence_maker
+    reverse_maker(sensor_influence_sum_all, sersor_influence_sum_all_reverse)
+    print(sersor_influence_sum_all_reverse)
+    reverse_maker(sensor_influence_value_sum_all, sersor_influence_value_sum_all_reverse)
+    print(sersor_influence_value_sum_all_reverse)
 
-        # init led
-        led_control_use_state(led_control, led_state_0)
+    print("TEST SIZE :", len(led_state_case))
 
-        # start
-        process()
+    # for i in range(len(led_state_case)):
+    #     save_folder=str(i+1)
+    #     led_state=led_state_case[i]
+    #
+    #     start=datetime.now()
+    #     print('START :',start)
+    #
+    #     # init led
+    #     led_control_use_state(led_control, led_state_0)
+    #
+    #     # start
+    #     process(start, i)
+    #
+    #     end=datetime.now()
+    #     print('END :',end)
+    #     print('걸린시간 :',(end-start))
+    #     timer_data.loc[i]={'start':start,'end':end,'diff':(end-start)}
+
+    save_folder = str(0)
+    start = datetime.now()
+    print('START :', start)
+    # init led
+    led_control_use_state(led_control, led_state_0)
+    # start
+    process(start, 0)
+    end = datetime.now()
+    print('END :', end)
+    print('걸린시간 :', (end - start))
+    timer_data.loc[0] = {'start': start, 'end': end, 'diff': (end - start)}
+
+    timer_data.to_csv("D:\\BunkerBuster\\Desktop\\shin_excel\\24시작\\시간측정실험\\timer.csv")
+    print(timer_data)
+    print("timer save")

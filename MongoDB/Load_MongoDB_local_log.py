@@ -1,6 +1,7 @@
 import pandas as pd
 from pymongo import MongoClient
 from Core import Intsain_LED_rev as ILED
+from bson import ObjectId
 
 def load_last1_cct():
     # Requires the PyMongo package.
@@ -13,7 +14,59 @@ def load_last1_cct():
                     '_id': -1
                 }.items())
 
-    result = client['Log_base_control_list']['500lux'].find(
+    result = client['Log_base_control_list']['task_test'].find(
+        filter=filter,
+        sort=sort
+    )
+
+    dic_list = []
+    dic = dict()
+    for i in result:
+        dic = i
+        dic_list.append(dic)
+
+    return dic_list
+
+def load_cct_id(_id):
+    # Requires the PyMongo package.
+    # https://api.mongodb.com/python/current
+
+    client = MongoClient('mongodb://localhost:27018/?readPreference=primary&appname=MongoDB%20Compass&ssl=false')
+    filter = {
+        '_id': ObjectId(_id)
+    }
+
+    sort = list({
+                    '_id': -1
+                }.items())
+
+    result = client['Log_base_control_list']['500lux_ver2'].find(
+        filter=filter,
+        sort=sort
+    )
+
+    dic_list = []
+    dic = dict()
+    for i in result:
+        dic = i
+        dic_list.append(dic)
+
+    return dic_list
+
+def load_mongo_task(task_type):
+    # Requires the PyMongo package.
+    # https://api.mongodb.com/python/current
+
+    client = MongoClient('mongodb://localhost:27018/?readPreference=primary&appname=MongoDB%20Compass&ssl=false')
+    filter = {
+        'task_type': task_type
+    }
+
+    sort = list({
+                    '_id': -1
+                }.items())
+
+    result = client['Log_base_control_list']['task_test'].find(
         filter=filter,
         sort=sort
     )
@@ -44,7 +97,7 @@ def make_row_key_val(dic):
         key_list = sorted(key_list, key=str.lower)
 
         for key in key_list:
-            if isinstance(dic[key], str) or isinstance(dic[key], int):
+            if isinstance(dic[key], str) or isinstance(dic[key], int): #or dic[key] is None:
                 keyrow.append(key)
                 valrow.append(dic[key])
             elif isinstance(dic[key], float):
@@ -85,6 +138,9 @@ def mongodb_to_df(dic_list,main_key):
             df = pd.DataFrame(val_table, columns=keys)
         else:
             temp_df = pd.DataFrame(val_table, columns=keys)
+            # print(count)
+            # print(df)
+            # print(temp_df)
             df = df.append(temp_df)
     # print(table+"_df load success!")
     return df
@@ -111,14 +167,16 @@ def mongodb_to_df_LED(dic_list,main_key,i):
             temp_df = pd.DataFrame(val_table, columns=keys)
             df = df.append(temp_df)
     # print(table+"_df load success!")
+    print(df)
     return df
 
 if __name__ == '__main__':
-    step_data = load_last1_cct()
+    task_type = "step_1_diff"
+    step_data = load_mongo_task(task_type)
     step_df = mongodb_to_df(step_data,'result')
     step_df = step_df.reset_index(drop=True)
     # print(step_df['avg_cct'])
-    step_df.to_csv('./log.csv')
+    step_df.to_csv('./log_'+task_type+'.csv')
 
 def process(main_key):
     step_data = load_last1_cct()
@@ -127,19 +185,19 @@ def process(main_key):
     return step_df
 
 
-def get_LED_state(main_key,idx):
-    step_data = load_last1_cct()
+def get_LED_state(main_key,_id):
+    step_data = load_cct_id(_id)
 
     for i in range(30):
-        temp = mongodb_to_df_LED(step_data, main_key, i)
+        temp = mongodb_to_df_LED(step_data, main_key,i)
         # 이거 자체에 딜레이가 많이 먹음.
 
         temp = temp.reset_index(drop=True)
 
-        ch1 = int(float(temp.loc[idx, 'ch1'].replace(" ", "")))
-        ch2 = int(float(temp.loc[idx, 'ch2'].replace(" ", "")))
-        ch3 = int(float(temp.loc[idx, 'ch3'].replace(" ", "")))
-        ch4 = int(float(temp.loc[idx, 'ch4'].replace(" ", "")))
+        ch1 = int(float(temp.loc[0,'ch1'].replace(" ", "")))
+        ch2 = int(float(temp.loc[0,'ch2'].replace(" ", "")))
+        ch3 = int(float(temp.loc[0,'ch3'].replace(" ", "")))
+        ch4 = int(float(temp.loc[0,'ch4'].replace(" ", "")))
         print(i + 1, ch1, ch2, ch3, ch4)
         ILED.set_LED(i + 1, ch1, ch2, ch3, ch4)
 

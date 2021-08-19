@@ -1,5 +1,6 @@
 # 암막, 자연광 색온도, 실시간, cas, 필요조도, 색온도 재현
 import pandas as pd
+from datetime import datetime
 
 from Core import switch
 from MongoDB import Load_MongoDB as LMDB
@@ -48,9 +49,12 @@ led_lock_range = 2  # LED 잠금시 잠굴 범위 값
 similar_led_range = 1  # 방향성고려나 제어조도기준 선정할 때 영향도의 비슷한 범위를 위한 값
 object_illum = 500
 first_matched = False
+save_folder="1"
 
 # 저장 변수
 df_record = []
+led_state_case_limit=[]
+illum_adder=[]
 
 # led control index
 led_control = [[0, 0, 0, 0], [0, 16, 0, 0], [16, 8, 8, 0], [16, 16, 8, 8], [0, 32, 16, 0], [32, 0, 32, 0],
@@ -229,15 +233,31 @@ sensor_influence_value_sum = [2.898907749, 2.893086347, 2.866149815, 2.863490037
                               1.054903321, 1.050562362, 1.050349077]
 
 
-def process():
+
+def illum_thread(illum_add):
+    change_value=[0.151515, 0.30303, 0.151515]
+    while True:
+        print('CHANGE ILLUM')
+        illum_add[0]+=change_value[0]
+        illum_add[2]-=change_value[0]
+
+        illum_add[3]+=change_value[1]
+        illum_add[5]-=change_value[1]
+
+        illum_add[6]+=change_value[2]
+        illum_add[8]-=change_value[2]
+        time.sleep(60)
+
+def start_data_center():
+    # 센싱부 실행
+    base = threading.Thread(target=bp.process)
+    base.start()
+
+def process(start, case_num):
     # 싱글톤 데이터 센터 로드.
     acs1 = acs.getInstance()
     II1 = II.getInstance()
     IC1 = IC.getInstance()
-
-    # 센싱부 실행
-    base = threading.Thread(target=bp.process)
-    base.start()
 
     # 초기 변수 설정
     first_matched = True
@@ -314,13 +334,20 @@ def process():
         led_control_use_state(led_control, led_state)
         time.sleep(5)
 
+    isFinish=True
+
+    illum_add_thread = threading.Thread(target=illum_thread, args=(illum_add,))
+    illum_add_thread.start()
 
     # 제어 시작
-    while True:
+    while isFinish:
         """
         센서 데이터의 일관성을 위해 값을 0으로 초기화 하고
         모든 데이터가 받을때까지 검사하다가 받는 순간 알고리즘 시작
         """
+        locking_init()
+
+
         # 센서 데이터 초기화
         for i in range(1, 10):
             acs1.set_sensor_data(i, 0, 0)
@@ -375,8 +402,8 @@ def process():
         # noon_lux=[298.24,132.78,233.07,54.99,59.87,84.62,35.40,39.68,33.08] # 1300cm, 90도
         # noon_lux=[283.60,122.47,210.18,52.06,55.15,76.40,32.89,35.99,30.50] # 1350cm, 90도
         # noon_lux=[283.60,123.33,218.36,51.09,55.15,78.22,32.89,35.99,30.50] # 1400cm, 90도
-        # for i in range(9):
-        #     II_illum[i]+=noon_lux[i]
+        for i in range(9):
+            II_illum[i]+=illum_add[i]
         ###############################################################################
 
         # 필요 변수 설정
@@ -434,7 +461,7 @@ def process():
 
         if (sensor_up_lock_cnt[0] == 9) & (sensor_down_lock_cnt[0] == 9):
             print("All LED LOCK")
-            exit()
+            break
         get_times += 1
 
         if first:
@@ -447,18 +474,19 @@ def process():
                     break
             # 기준을 만족하는 경우랑 일반의 경우 step 별로 저장
             if (490 <= avg_illum) & (avg_illum <= 510) & save_flag:
-                save_data(df_record, acs_cct, II_illum, IC_curr, avg_cct, avg_illum, sum_curr, uniformity, get_times,
+                save_data(start, df_record, acs_cct, II_illum, IC_curr, avg_cct, avg_illum, sum_curr, uniformity, get_times,
                           "_success_E%s_U%s" % (int(sum_curr), uniformity), True)
             else:
-                save_data(df_record, acs_cct, II_illum, IC_curr, avg_cct, avg_illum, sum_curr, uniformity, get_times,
+                save_data(start, df_record, acs_cct, II_illum, IC_curr, avg_cct, avg_illum, sum_curr, uniformity, get_times,
                           "_E%s_U%s" % (int(sum_curr), uniformity), False)
 
             # 현재 제어상태를 총영향도에 기반한 제어상태로 변경
-            if (avg_illum > 500):
-                led_setting_based_on_influence_sum(False)
-            else:
-                led_setting_based_on_influence_sum(True)
+            # if (avg_illum > 500):
+            #     led_setting_based_on_influence_sum(False)
+            # else:
+            #     led_setting_based_on_influence_sum(True)
         else :
+            save_flag = True
             if (avg_illum < 490):
                 print("AVG Illum is Low")
                 illum_before_needs(II_illum, avg_illum)
@@ -469,26 +497,34 @@ def process():
                 # 조도가 극한으로 높은 상황에서 만족상태를 달성할때까지 보면
                 # 조명을 24[첫단계]로 끄는 경우 때문에
                 # 지점을 잠궈버리는 경우가 많음
+                for i in range(9):
+                    if (II_illum[i] < 480) | (520 < II_illum[i]):
+                        save_flag = False
+                        break
                 if first_matched:
                     first_matched = False
                     locking_init()
+                if save_flag:
+                    print("ILLUM is Enough. [WAIT]")
+                    continue
                 illum_match_needs(II_illum, avg_illum)
             elif (510 < avg_illum):
                 print("AVG Illum is High")
                 illum_after_needs(II_illum, avg_illum)
 
             # 480<= 지점별 조도 <= 520 안에 모든 지점이 만족한다면 스텝별 저장이름에 success를 추가해서 저장
-            save_flag = True
-            for i in range(9):
-                if (II_illum[i] < 480) | (520 < II_illum[i]):
-                    save_flag = False
-                    break
+
             # 기준을 만족하는 경우랑 일반의 경우 step 별로 저장
             if (490 <= avg_illum) & (avg_illum <= 510) & save_flag:
-                save_data(df_record, acs_cct, II_illum, IC_curr, avg_cct, avg_illum, sum_curr, uniformity, get_times,
+                time.sleep(5)
+                # 값 불러옴
+                acs_cct = acs1.get_sensor_data()[0][:9]
+                II_illum = II1.get_illum_data()[:9]
+                IC_curr = IC1.get_curr_data()[:10]
+                save_data(start, df_record, acs_cct, II_illum, IC_curr, avg_cct, avg_illum, sum_curr, uniformity, get_times,
                           "_success_E%s_U%s" % (int(sum_curr), uniformity), True)
             else:
-                save_data(df_record, acs_cct, II_illum, IC_curr, avg_cct, avg_illum, sum_curr, uniformity, get_times,
+                save_data(start, df_record, acs_cct, II_illum, IC_curr, avg_cct, avg_illum, sum_curr, uniformity, get_times,
                           "_E%s_U%s" % (int(sum_curr), uniformity), False)
 
         # 현재 데이터 상태 출력
@@ -496,7 +532,10 @@ def process():
         print_led_locking_state(led_up_lock, "UP")
         print_led_locking_state(led_down_lock, "DOWN")
         print_sensor_locking_state()
-        time.sleep(5)
+        print_natural_light_state()
+        # if(get_times>=led_state_case_limit[case_num]):
+        #     isFinish=False
+        #     break
 
 
 # 잠금 초기화 하는 함수[조명 업,다운, 센서]
@@ -511,8 +550,9 @@ def locking_init():
 
 
 # 스텝별로 제어 상태, 센서 값 저장하는 함수
-def save_data(df_record, acs_cct, II_illum, IC_curr, avg_cct, avg_illum, sum_curr, uniformity, get_times, save_name,
+def save_data(start, df_record, acs_cct, II_illum, IC_curr, avg_cct, avg_illum, sum_curr, uniformity, get_times, save_name,
               isPrint):
+    step_end=datetime.now()
     led_num_list = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
                     25, 26, 27, 28, 29, 30]
     df_record.append(pd.DataFrame(led_num_list, columns=['led']))
@@ -522,12 +562,16 @@ def save_data(df_record, acs_cct, II_illum, IC_curr, avg_cct, avg_illum, sum_cur
             df_record[len(df_record) - 1].loc[idx - 1, 'cct'] = acs_cct[idx - 1]
             df_record[len(df_record) - 1].loc[idx - 1, 'illum'] = II_illum[idx - 1]
             df_record[len(df_record) - 1].loc[idx - 1, 'curr'] = IC_curr[idx - 1]
+            df_record[len(df_record) - 1].loc[idx - 1, 'natural_light'] = illum_add[idx - 1]
         elif (idx < 11):
             df_record[len(df_record) - 1].loc[idx - 1, 'curr'] = IC_curr[idx - 1]
     df_record[len(df_record) - 1].loc[10, 'cct'] = avg_cct
     df_record[len(df_record) - 1].loc[10, 'illum'] = avg_illum
     df_record[len(df_record) - 1].loc[10, 'curr'] = sum_curr
     df_record[len(df_record) - 1].loc[0, 'uniformity'] = uniformity
+    df_record[len(df_record) - 1].loc[0, 'start']=start
+    df_record[len(df_record) - 1].loc[0, 'end'] = step_end
+    df_record[len(df_record) - 1].loc[0, 'diff_time'] = step_end-start
 
     if (isPrint):
         print('=' * 20)
@@ -535,8 +579,8 @@ def save_data(df_record, acs_cct, II_illum, IC_curr, avg_cct, avg_illum, sum_cur
         print('=' * 20)
 
     df_record[len(df_record) - 1].to_csv(
-        "D:\\BunkerBuster\\Desktop\\shin_excel\\24시작\\[%s]_step%s.csv" % (
-            get_times - 1, save_name))
+        "D:\\BunkerBuster\\Desktop\\shin_excel\\24시작\\시간측정실험\\%s\\[%s]_step%s.csv" % (
+            save_folder, get_times - 1, save_name))
 
 
 # 현재 컨트롤 lux 상태 출력
@@ -577,6 +621,11 @@ def print_sensor_locking_state():
             print()
     print()
 
+def print_natural_light_state():
+    for i in range(len(illum_add)):
+        print(illum_add[i],' ',end='')
+        if(i%3==2):
+            print()
 
 # LED 제어
 def control_led(led_num, control_step):
@@ -605,7 +654,7 @@ def illum_before_needs(II_illum, avg_illum):
             led_setting_based_on_influence_sum(True)
         # exit()
 
-    led_up(min_sensor, sensor_influence_sum_part, sensor_influence_value_sum_part)
+    led_up(min_sensor, sensor_influence_sum_all, sensor_influence_value_sum_all)
 
 
 # 평균조도가 만족될떄
@@ -672,7 +721,7 @@ def illum_after_needs(II_illum, avg_illum):
             led_setting_based_on_influence_sum(True)
         # exit()
 
-    led_down(max_sensor, sensor_influence_sum_part_reverse, sensor_influence_value_sum_part_reverse)
+    led_down(max_sensor, sersor_influence_sum_all_reverse, sersor_influence_value_sum_all_reverse)
 
 
 # 낮출 조명을 선정하는 단계 영향도는 이전 제어하는 함수에서 설정해준다.
@@ -724,7 +773,8 @@ def select_control_led(sensor, influence_rank, isLow):
     # 낮출 LED 선정 (잠금 X, 제어 상태 최저 X) 영향도가 해당 센서에 가장 높은 조명 중 총영향도가 높은순서
     for i in range(0, len(influence_rank[sensor])):
         if (isLow) & (led_state[influence_rank[sensor][i]] != len(led_control) - 1) & (
-                led_up_lock[influence_rank[sensor][i]] == 0):
+                led_up_lock[influence_rank[sensor][i]] == 0) & (
+                led_max_state[influence_rank[sensor][i]] > led_state[influence_rank[sensor][i]]):
             control_led_idx = influence_rank[sensor][i]
             control_led_rank = i
             print("SELECT UP LED NUM : %s" % control_led_idx)
@@ -800,6 +850,7 @@ def led_locking(led_lock_list, led_lock):
 # 1. 총 영향도가 가장 높은 조명으로 제어단계를 전부 변경
 # 2. 만약 조명이 최고 수치라 올릴 수 없다면 다음 조명으로 변경. 반복
 def led_setting_based_on_influence_sum(isLow):
+    return
     print("First Step Setting")
     print_control_lux()
 
@@ -974,6 +1025,24 @@ led_state = [0,
              22, 22, 22, 22, 22, 22]
 led_state_case=[
                 [0,
+                22, 22, 22, 22, 22, 22,
+                22, 22, 22, 22, 22, 22,
+                22, 22, 22, 22, 22, 22,
+                22, 22, 22, 22, 22, 22,
+                22, 22, 22, 22, 22, 22],
+                [0,
+                 22, 22, 22, 22, 22, 22,
+                 22, 22, 22, 22, 22, 22,
+                 1, 1, 1, 1, 1, 1,
+                 1, 1, 1, 1, 1, 1,
+                 1, 1, 1, 1, 1, 1],
+                [0,
+                 1, 1, 1, 1, 1, 1,
+                 1, 1, 1, 1, 1, 1,
+                 1, 1, 1, 1, 1, 1,
+                 22, 22, 22, 22, 22, 22,
+                 22, 22, 22, 22, 22, 22],
+                [0,
                  22, 22, 22, 22, 22, 22,
                  22, 22, 22, 22, 1, 1,
                  22, 22, 1, 1, 1, 1,
@@ -991,6 +1060,8 @@ led_state_case=[
                  1, 1, 1, 1, 22, 22,
                  1, 1, 22, 22, 22, 22,
                  22, 22, 22, 22, 22, 22]]
+led_state_case_limit=[800,500,500,500,500,500]
+illum_adder=[]
 # 가상 자연광 교수님 버전 1
 # led_state = [0,
 #              22, 22, 22, 22, 22, 22,
@@ -1035,20 +1106,69 @@ led_state_66_passive = [0,
                         1, 9, 1, 2, 11, 1,
                         1, 3, 1, 6, 1, 1]
 
+
+illum_add=[100,200,200,
+           0,100,200,
+           0,0,100]
+led_state=[0,
+            1,4,1,2,5,1,
+            1,9,4,4,7,1,
+            1,1,1,1,1,1,
+            1,9,3,3,8,2,
+            1,4,1,2,8,2]
+led_max_state=[0,
+            1,4,1,2,5,1,
+            1,9,4,4,7,1,
+            1,1,1,1,1,1,
+            1,9,3,3,8,2,
+            1,4,1,2,8,2]
+
 if __name__ == '__main__':
     # receive_thread_udp=threading.Thread(target=udp.udp_receive())
     # receive_thread_udp.start()
+    timer_data=pd.DataFrame(columns=['start', 'end', 'diff'])
+    start_data_center()
 
-    for led_change in led_state_case:
-        led_state=led_change
-        # influence_maker
-        reverse_maker(sensor_influence_sum_all, sersor_influence_sum_all_reverse)
-        print(sersor_influence_sum_all_reverse)
-        reverse_maker(sensor_influence_value_sum_all, sersor_influence_value_sum_all_reverse)
-        print(sersor_influence_value_sum_all_reverse)
+    # influence_maker
+    reverse_maker(sensor_influence_sum_all, sersor_influence_sum_all_reverse)
+    print(sersor_influence_sum_all_reverse)
+    reverse_maker(sensor_influence_value_sum_all, sersor_influence_value_sum_all_reverse)
+    print(sersor_influence_value_sum_all_reverse)
 
-        # init led
-        led_control_use_state(led_control, led_state_0)
+    print("TEST SIZE :",len(led_state_case))
 
-        # start
-        process()
+    # for i in range(len(led_state_case)):
+    #     save_folder=str(i+1)
+    #     led_state=led_state_case[i]
+    #
+    #     start=datetime.now()
+    #     print('START :',start)
+    #
+    #     # init led
+    #     led_control_use_state(led_control, led_state_0)
+    #
+    #     # start
+    #     process(start, i)
+    #
+    #     end=datetime.now()
+    #     print('END :',end)
+    #     print('걸린시간 :',(end-start))
+    #     timer_data.loc[i]={'start':start,'end':end,'diff':(end-start)}
+
+
+
+    save_folder=str(0)
+    start=datetime.now()
+    print('START :',start)
+    # init led
+    led_control_use_state(led_control, led_state_0)
+    # start
+    process(start, 0)
+    end=datetime.now()
+    print('END :',end)
+    print('걸린시간 :',(end-start))
+    timer_data.loc[0]={'start':start,'end':end,'diff':(end-start)}
+
+    timer_data.to_csv("D:\\BunkerBuster\\Desktop\\shin_excel\\24시작\\시간측정실험\\timer.csv")
+    print(timer_data)
+    print("timer save")

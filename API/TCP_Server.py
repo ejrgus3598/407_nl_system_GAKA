@@ -1,6 +1,7 @@
 from socket import *
 from Core.arduino_color_sensor import acs
 
+
 def process():
     serverSocket = socket(AF_INET, SOCK_STREAM)
     # Prepare a sever socket
@@ -67,7 +68,7 @@ def process():
             if (num == 1):
                 cct = (1.2097963984 * cct) - 808.0531418844
             elif (num == 2):
-                cct = (1.2578822066 * cct) - 917.6983576473
+                cct = (1.1935746132 * cct) - 795.3383657509
             elif (num == 3):
                 cct = (1.2165430984 * cct) - 786.7693855705
             elif (num == 4):
@@ -97,6 +98,6 @@ def process():
             connectionSocket.close()
     serverSocket.close()
 
+
 if __name__ == '__main__':
     process()
-

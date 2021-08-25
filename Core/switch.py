@@ -10,7 +10,7 @@ def onnoff():
     test_msg = "0"
     sock.send(test_msg.encode())
 
-    time.sleep(20)
+    time.sleep(5)
     test_msg = "1"
     sock.send(test_msg.encode())
     #

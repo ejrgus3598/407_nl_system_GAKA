@@ -40,7 +40,7 @@ def load_cct_id(_id):
                     '_id': -1
                 }.items())
 
-    result = client['Log_base_control_list']['500lux_ver2'].find(
+    result = client['Log_base_control_list']['task_test'].find(
         filter=filter,
         sort=sort
     )
@@ -167,11 +167,11 @@ def mongodb_to_df_LED(dic_list,main_key,i):
             temp_df = pd.DataFrame(val_table, columns=keys)
             df = df.append(temp_df)
     # print(table+"_df load success!")
-    print(df)
+    # print(df)
     return df
 
 if __name__ == '__main__':
-    task_type = "step_1_diff"
+    task_type = "step_1_diff_cal_illum_insertNL"
     step_data = load_mongo_task(task_type)
     step_df = mongodb_to_df(step_data,'result')
     step_df = step_df.reset_index(drop=True)
@@ -179,7 +179,10 @@ if __name__ == '__main__':
     step_df.to_csv('./log_'+task_type+'.csv')
 
 def process(main_key):
-    step_data = load_last1_cct()
+    # step_data = load_last1_cct()
+
+    task_type = "step_1_diff_cal_illum"
+    step_data = load_mongo_task(task_type)
     step_df = mongodb_to_df(step_data, main_key)
     step_df = step_df.reset_index(drop=True)
     return step_df
@@ -187,6 +190,7 @@ def process(main_key):
 
 def get_LED_state(main_key,_id):
     step_data = load_cct_id(_id)
+    # print(step_data)
 
     for i in range(30):
         temp = mongodb_to_df_LED(step_data, main_key,i)

@@ -180,8 +180,10 @@ def process(task_type):
     #              29, 30]]
 
     for o in range(4):
-        print(o)
-        for j in range(10, 101, 10):
+        if o < 2:
+            continue
+
+        for j in range(10, 201, 10):
             if o == 0:
                 a = j
                 b = c = d = 0
@@ -189,32 +191,35 @@ def process(task_type):
                 b = j
                 a = c = d = 0
             elif o == 2:
+                if j <180:
+                    continue
                 c = j
                 a = b = d = 0
             elif o == 3:
                 d = j
                 a = b = c = 0
 
-            for x in range(len(map_list)):
-                for y in map_list[x]:
-                    # print(a, b, c, d)
-                    ILED.set_LED(y, a, b, c, d)
-                    # time.sleep(1)
+            # for x in range(len(map_list)):
+            #     for y in map_list[x]:
+            #         # print(a, b, c, d)
+            #         ILED.set_LED(y, a, b, c, d)
+            #         # time.sleep(1)
 
-                sensing_data_check()
-                data_pd, avg_illum, cct_now, avg_cct, uniformity = sensing_data(0)
-                result_pd = pd.DataFrame([[avg_illum, cct_now, avg_cct, uniformity]],
-                                         columns=['avg_illum', 'cct_now', 'avg_cct', 'uniformity'])
-                LED_pd = pd.DataFrame(ILED.get_LED_state(), columns=['LED_No', 'ch1', 'ch2', 'ch3', 'ch4'])
-                IMDB.Log_2_Mongo_tasktype(LED_pd, data_pd, result_pd, task_type)
+            ILED.all_set_LED(a, b, c, d)
+            sensing_data_check()
+            data_pd, avg_illum, cct_now, avg_cct, uniformity = sensing_data(0)
+            result_pd = pd.DataFrame([[avg_illum, cct_now, avg_cct, uniformity]],
+                                     columns=['avg_illum', 'cct_now', 'avg_cct', 'uniformity'])
+            LED_pd = pd.DataFrame(ILED.get_LED_state(), columns=['LED_No', 'ch1', 'ch2', 'ch3', 'ch4'])
+            IMDB.Log_2_Mongo_tasktype(LED_pd, data_pd, result_pd, task_type)
                 # print(x,"!1")
 
-                if x == 0:
-                    ILED.set_LED(map_list[x][0], 0, 0, 0, 0)
-                if x == len(map_list)-1:
-                    ILED.all_set_LED(0, 0, 0, 0)
+                # if x == 0:
+                #     ILED.set_LED(map_list[x][0], 0, 0, 0, 0)
+                # if x == len(map_list)-1:
+                #     ILED.all_set_LED(0, 0, 0, 0)
 
             # input("continue? (press any key) :")
 
 if __name__ == '__main__':
-    process("LED_count_diff_cal_test_point_9")
+    process("diff_test_point_2_2")

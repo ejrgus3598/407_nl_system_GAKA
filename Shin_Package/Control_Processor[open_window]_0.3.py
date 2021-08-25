@@ -345,7 +345,7 @@ def start_data_center():
     # 센싱부 실행
     base = threading.Thread(target=bp.process)
     base.start()
-
+`
 
 def process(start, case_num):
     locking_init()

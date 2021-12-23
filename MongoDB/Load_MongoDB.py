@@ -7,7 +7,9 @@ def load_last1_cct():
     }
     project = {
         'datetime': 1,
-        'data.results.CCT': 1
+        'data.results.CCT': 1,
+        'data.results.Photometric': 1
+
     }
     sort = list({
                     'datetime': -1

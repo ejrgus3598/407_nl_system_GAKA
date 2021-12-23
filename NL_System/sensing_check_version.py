@@ -434,7 +434,7 @@ def dimming_cct(cct_now):
         # sensing_data_check()
         # data_pd, avg_illum, cct_now, avg_cct, uniformity = sensing_data(cct_now)
 
-def process():
+def process(task_type):
     # 싱글톤 데이터 센터 로드.
     acs1 = acs.getInstance()
     II1 = II.getInstance()
@@ -483,7 +483,7 @@ def process():
         result_pd = pd.DataFrame([[avg_illum, cct_now, avg_cct, uniformity]],
                                  columns=['avg_illum', 'cct_now', 'avg_cct', 'uniformity'])
         LED_pd = pd.DataFrame(ILED.get_LED_state(), columns=['LED_No', 'ch1', 'ch2', 'ch3', 'ch4'])
-        # IMDB.Log_2_Mongo(LED_pd, data_pd, result_pd)
+        # IMDB.Log_2_Mongo_tasktype(LED_pd, data_pd, result_pd)
 
 
         # cct_now=cct_now+50
@@ -491,4 +491,4 @@ def process():
         #     break
 
 if __name__ == '__main__':
-    process()
+    process("30LED_energe_point1")

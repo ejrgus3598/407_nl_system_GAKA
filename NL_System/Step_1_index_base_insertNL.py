@@ -305,18 +305,22 @@ def process(tasktype):
         result_pd = pd.DataFrame([[avg_illum, cct_now, avg_cct, uniformity]],
                                  columns=['avg_illum', 'cct_now', 'avg_cct', 'uniformity'])
         LED_pd = pd.DataFrame(ILED.get_LED_state(), columns=['LED_No', 'ch1', 'ch2', 'ch3', 'ch4'])
-        IMDB.Log_2_Mongo_tasktype(LED_pd, data_pd, result_pd, tasktype)
+        # IMDB.Log_2_Mongo_tasktype(LED_pd, data_pd, result_pd, tasktype)
+        # input("continue? (press any key) :")
 
-
-        # return 0
+        return 0
         # cct_now = cct_now + 50
         # if cct_now > 8000:
         #     break
 
 
 if __name__ == '__main__':
-    process("step_1_diff_cal_illum_insertNL")
+    process("step_1_diff_cal_illum_insertNL4")
 
 
 # 1채널 기준 최적화 :step_1_diff_cal_illum
 # 4채널 기준 최적화 : step_1_diff_cal_illum2
+
+# 1채널 기준 자연광 유입 :step_1_diff_cal_illum_insertNL => 흐린날 오후치(20210825)
+# 1채널 기준 자연광 유입 :step_1_diff_cal_illum_insertNL3 => 흐린날 오후치(20210826)
+# 1채널 기준 자연광 유입 :step_1_diff_cal_illum_insertNL4 => 00날(20210000)

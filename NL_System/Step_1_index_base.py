@@ -190,9 +190,9 @@ def dimming_illum(temp_df, temp, target_illum, target_illum1, cct_now):
         sensing_data_check()
         data_pd, avg_illum, cct_now, avg_cct, uniformity = sensing_data(cct_now)
 
-        if (abs(800 - avg_illum) > 20):
+        if (abs(300 - avg_illum) > 20):
 
-            scale = (abs(800 - avg_illum) / 40)
+            scale = (abs(300 - avg_illum) / 40)
             if scale - int(scale) > 0.5:
                 scale = int(scale) + 1
             else:
@@ -202,7 +202,7 @@ def dimming_illum(temp_df, temp, target_illum, target_illum1, cct_now):
             if scale == 1:
                 count = count + 1
 
-            if avg_illum < 800:
+            if avg_illum < 300:
                 up_and_down = scale
                 print("+조정!")
 
@@ -489,7 +489,7 @@ def process(tasktype):
     target_illum1 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
     # 기준 조도, 색온도 설정
-    cct_now = 2700
+    cct_now = 5750
 
     while True:
         # mongo_df = load_NL_CCT_mongo()
@@ -525,8 +525,9 @@ def process(tasktype):
         result_pd = pd.DataFrame([[avg_illum, cct_now, avg_cct, uniformity]],
                                  columns=['avg_illum', 'cct_now', 'avg_cct', 'uniformity'])
         LED_pd = pd.DataFrame(ILED.get_LED_state(), columns=['LED_No', 'ch1', 'ch2', 'ch3', 'ch4'])
-        IMDB.Log_2_Mongo_tasktype(LED_pd, data_pd, result_pd, tasktype)
+        # IMDB.Log_2_Mongo_tasktype(LED_pd, data_pd, result_pd, tasktype)
 
+        input("continue? (press any key) :")
 
         # return 0
         cct_now = cct_now + 50

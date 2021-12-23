@@ -1,11 +1,13 @@
 import serial
 
-test = serial.Serial(port="COM1", baudrate=9600)
-
-test.write("2A-70\n".encode())
+# test = serial.Serial(port="COM1", baudrate=9600)
+#
+#
+# # test.write("2A-70\n".encode())
+# test.write('1R\n'.encode())
 # result = test.readline()
 # print(result)
-test.close()
+# test.close()
 
 # 주소 : 왼쪽 1, 오른쪽 2, 둘다 3
 # 위치 : 최상단으로 부터 이격거리 mm
@@ -25,3 +27,18 @@ test.close()
 # 11.블라인드 위치 설정 후 틸트 동작 수행 (주소|G|위치|;|각도|\n)  //return
 
 
+def ctrl_tilt(angle):
+    test = serial.Serial(port="COM1", baudrate=9600)
+
+
+    # test.write(('1A' + str(angle) + '\n').encode())
+    # result = test.readline()
+    # print(result)
+    test.write(('3A' + str(angle) + '\n').encode())
+    # result = test.readline()
+    # print(result)
+
+    test.close()
+
+if __name__ == '__main__':
+    ctrl_tilt(30)

@@ -187,8 +187,17 @@ def process(main_key):
     step_df = step_df.reset_index(drop=True)
     return step_df
 
+def update_state_illum(ch, updown):
+    if ch == 0:
+        return 0
+    else:
+        re = ch + updown
+        if re < 0:
+            return 0
+        else:
+            return re
 
-def get_LED_state(main_key,_id):
+def get_LED_state(main_key,_id,control_index,nonfirst):
     step_data = load_cct_id(_id)
     # print(step_data)
 
@@ -202,9 +211,20 @@ def get_LED_state(main_key,_id):
         ch2 = int(float(temp.loc[0,'ch2'].replace(" ", "")))
         ch3 = int(float(temp.loc[0,'ch3'].replace(" ", "")))
         ch4 = int(float(temp.loc[0,'ch4'].replace(" ", "")))
-        print(i + 1, ch1, ch2, ch3, ch4)
-        ILED.set_LED(i + 1, ch1, ch2, ch3, ch4)
 
+        if nonfirst:
+            temp_index = ch1 + ch2 + ch3 + ch4
+            cut1 = int((control_index[i] - temp_index) * (ch1 / temp_index))
+            cut2 = int((control_index[i] - temp_index) * (ch2 / temp_index))
+            cut3 = int((control_index[i] - temp_index) * (ch3 / temp_index))
+            cut4 = int((control_index[i] - temp_index) * (ch4 / temp_index))
+
+            ch1 = update_state_illum(ch1, cut1)
+            ch2 = update_state_illum(ch2, cut2)
+            ch3 = update_state_illum(ch3, cut3)
+            ch4 = update_state_illum(ch4, cut4)
+        # print(i+1,ch1, ch2, ch3, ch4)
+        ILED.set_LED(i + 1, ch1, ch2, ch3, ch4)
     return 0
 
 

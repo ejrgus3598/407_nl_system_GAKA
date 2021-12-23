@@ -16,7 +16,7 @@ def re_ack(sock):
     global flag
     try:
         recvMsg, addr = sock.recvfrom(500)
-        print(recvMsg)
+        # print(recvMsg)
         flag = True
 
     except:
@@ -77,7 +77,13 @@ def get_LED_state():
     return LED_state
 
 if __name__ == '__main__':
-    all_set_LED(0,0,0,0)
+    # all_set_LED(100,0,0,0)
+    # all_set_LED(0,100,0,0)
+    # all_set_LED(0,0,100,0)
+    all_set_LED(0, 22, 34, 20)
+    # 7400, 5400, 4500, 2700
+
+
     # for i in range(30):
     # set_LED(1, 0, 0, 0, 0)
     # set_LED(2, 0, 0, 0, 0)

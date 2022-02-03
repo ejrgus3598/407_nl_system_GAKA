@@ -41,4 +41,4 @@ def ctrl_tilt(angle):
     test.close()
 
 if __name__ == '__main__':
-    ctrl_tilt(30)
+    ctrl_tilt(-50)

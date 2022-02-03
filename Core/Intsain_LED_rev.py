@@ -80,7 +80,7 @@ if __name__ == '__main__':
     # all_set_LED(100,0,0,0)
     # all_set_LED(0,100,0,0)
     # all_set_LED(0,0,100,0)
-    all_set_LED(0, 22, 34, 20)
+    all_set_LED(0, 0, 0, 0)
     # 7400, 5400, 4500, 2700
 
 

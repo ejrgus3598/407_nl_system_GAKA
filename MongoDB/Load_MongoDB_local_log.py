@@ -171,7 +171,7 @@ def mongodb_to_df_LED(dic_list,main_key,i):
     return df
 
 if __name__ == '__main__':
-    task_type = "step_1_diff_cal_illum_insertNL"
+    task_type = "step_1_diff_cal_illum_newLED"
     step_data = load_mongo_task(task_type)
     step_df = mongodb_to_df(step_data,'result')
     step_df = step_df.reset_index(drop=True)
@@ -181,7 +181,7 @@ if __name__ == '__main__':
 def process(main_key):
     # step_data = load_last1_cct()
 
-    task_type = "step_1_diff_cal_illum"
+    task_type = "step_1_diff_cal_illum_newLED"
     step_data = load_mongo_task(task_type)
     step_df = mongodb_to_df(step_data, main_key)
     step_df = step_df.reset_index(drop=True)
@@ -199,7 +199,6 @@ def update_state_illum(ch, updown):
 
 def get_LED_state(main_key,_id,control_index,nonfirst):
     step_data = load_cct_id(_id)
-    # print(step_data)
 
     for i in range(30):
         temp = mongodb_to_df_LED(step_data, main_key,i)
@@ -212,7 +211,7 @@ def get_LED_state(main_key,_id,control_index,nonfirst):
         ch3 = int(float(temp.loc[0,'ch3'].replace(" ", "")))
         ch4 = int(float(temp.loc[0,'ch4'].replace(" ", "")))
 
-        if nonfirst:
+        if nonfirst is False:
             temp_index = ch1 + ch2 + ch3 + ch4
             cut1 = int((control_index[i] - temp_index) * (ch1 / temp_index))
             cut2 = int((control_index[i] - temp_index) * (ch2 / temp_index))
@@ -227,4 +226,35 @@ def get_LED_state(main_key,_id,control_index,nonfirst):
         ILED.set_LED(i + 1, ch1, ch2, ch3, ch4)
     return 0
 
+
+def get_LED_state2(main_key,_id,control_index):
+    step_data = load_cct_id(_id)
+
+    for i in range(30):
+        temp = mongodb_to_df_LED(step_data, main_key,i)
+        # 이거 자체에 딜레이가 많이 먹음.
+
+        temp = temp.reset_index(drop=True)
+
+        ch1 = int(float(temp.loc[0,'ch1'].replace(" ", "")))
+        ch2 = int(float(temp.loc[0,'ch2'].replace(" ", "")))
+        ch3 = int(float(temp.loc[0,'ch3'].replace(" ", "")))
+        ch4 = int(float(temp.loc[0,'ch4'].replace(" ", "")))
+
+
+        temp_index = ch1 + ch2 + ch3 + ch4
+        cut1 = int((control_index[i] - temp_index) * (ch1 / temp_index))
+        cut2 = int((control_index[i] - temp_index) * (ch2 / temp_index))
+        cut3 = int((control_index[i] - temp_index) * (ch3 / temp_index))
+        cut4 = int((control_index[i] - temp_index) * (ch4 / temp_index))
+
+        ch1 = update_state_illum(ch1, cut1)
+        ch2 = update_state_illum(ch2, cut2)
+        ch3 = update_state_illum(ch3, cut3)
+        ch4 = update_state_illum(ch4, cut4)
+
+
+        # print(i+1,ch1, ch2, ch3, ch4)
+        ILED.set_LED(i + 1, ch1, ch2, ch3, ch4)
+    return 0
 

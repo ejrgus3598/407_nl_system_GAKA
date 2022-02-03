@@ -36,4 +36,4 @@ if __name__ == '__main__':
     # all_set_LED(0,100,0,0)
     # set_LED(6, 0, 0, 0, 0)
     for i in range(30):
-        set_LED(i, 0, 0, 0, 100)
+        set_LED(i, 255, 0, 0, 0)

@@ -15,7 +15,7 @@ def get_intsain():
         sock.sendto(msg.encode(), ("192.168.100.213", 50213))
         # print("보냄!")
         total_data = ""
-        for i in range(5):
+        for i in range(4):
             recvMsg, addr = sock.recvfrom(500)
             # print(type(recvMsg))
             # print(sys.getsizeof(recvMsg))
@@ -30,13 +30,13 @@ def get_intsain():
         # print(temp[0])
         temp = temp[0].split("},")
 
-        for i in range(10):
+        for i in range(9):
             illum = temp[i].split(",")[3].split(":")[1].replace('"', "")
             II1.set_illum_data(i, illum)
 
-        for i in range(10, 20):
+        for i in range(9, 19):
             curr = temp[i].split(",")[3].split(":")[1].replace('"', "")
-            IC1.set_curr_data(i - 10, curr)
+            IC1.set_curr_data(i - 9, curr)
         time.sleep(3)
 
     sock.close()
